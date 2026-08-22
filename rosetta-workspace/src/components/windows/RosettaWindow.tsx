@@ -27,6 +27,7 @@ export function RosettaWindow({
   const isResizing = useRef<string | null>(null);
   const dragStart = useRef({ x: 0, y: 0, winX: 0, winY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, winX: 0, winY: 0 });
+  const [isDraggingVisual, setIsDraggingVisual] = useState(false);
 
   const isActive =
     win.zIndex >= (actions.getTopZIndex?.() ?? 0) - 1; // approximate "top"
@@ -55,6 +56,7 @@ export function RosettaWindow({
       e.preventDefault();
       e.stopPropagation();
       isDragging.current = true;
+      setIsDraggingVisual(true);
       dragStart.current = {
         x: e.clientX,
         y: e.clientY,
@@ -89,6 +91,7 @@ export function RosettaWindow({
 
       const onUp = () => {
         isDragging.current = false;
+        setIsDraggingVisual(false);
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
       };
@@ -190,14 +193,23 @@ export function RosettaWindow({
   return (
     <div
       ref={windowRef}
-      style={style}
+      style={{
+        ...style,
+        transform: isDraggingVisual ? "scale(1.018)" : "scale(1)",
+        transition: isDraggingVisual
+          ? "box-shadow 0.15s ease"
+          : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, opacity 0.2s ease",
+        willChange: isDraggingVisual ? "transform" : "auto",
+      }}
       onPointerDown={onWindowPointerDown}
-      className={`flex flex-col overflow-hidden transition-shadow duration-200 ${
-        isMaximized ? "rounded-none" : "rounded-lg"
+      className={`flex flex-col overflow-hidden ${
+        isMaximized ? "rounded-none" : "rounded-xl"
       } ${
-        isActive
-          ? "shadow-2xl shadow-black/60"
-          : "shadow-lg shadow-black/40 opacity-95"
+        isDraggingVisual
+          ? "shadow-[0_30px_60px_rgba(0,0,0,0.55),0_0_0_1px_rgba(255,255,255,0.08)]"
+          : isActive
+            ? "shadow-2xl shadow-black/60"
+            : "shadow-lg shadow-black/40 opacity-95"
       }`}
     >
       {/* ── Title Bar ── */}
