@@ -1,15 +1,15 @@
 import os
 import re
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from core.state import RosettaState
 from core.formula_ir import extract_formula_ir_from_logic_json
 from dotenv import load_dotenv
 
 load_dotenv()
-# Initialize the LLM (Gemini 1.5 Pro/Flash for code reasoning)
-llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0.1)
+# Initialize the LLM (Groq for high-speed code reasoning)
+llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)
 
 # ==========================================
 # HELPER: MARKDOWN EXTRACTOR
