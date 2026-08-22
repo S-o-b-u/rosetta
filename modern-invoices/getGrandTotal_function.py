@@ -1,97 +1,74 @@
-from decimal import Decimal
+from decimal import Decimal, getcontext, ROUND_HALF_EVEN
 from typing import Any, Dict, List
 
-
-def calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, Any]:
+def calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, str]:
     """
-    Compute the grand total of an order from the supplied request payload.
+    Compute order totals based on the provided request payload.
 
-    Expected keys (both snake_case and camelCase are accepted):
-        - cart_lines / cartLines
-        - ship_info / shipGroups
-        - adjustments / orderAdjustments
-        - global_adjustments / globalAdjustments
-
-    Returns a dict containing every component of the formula and the final
-    grand_total, all as ``Decimal`` objects.
+    Expected output keys (all present as strings with two decimal places):
+        - sub_total
+        - total_shipping
+        - total_sales_tax
+        - order_other_adjustment_total
+        - order_global_adjustments
+        - grand_total
     """
+    # Ensure sufficient precision for monetary calculations
+    getcontext().prec = 28
 
-    def _to_decimal(value: Any) -> Decimal:
-        """Convert a value that may be str, int, float or Decimal to Decimal."""
+    def to_decimal(value: Any) -> Decimal:
+        """Convert various numeric representations to Decimal safely."""
         if isinstance(value, Decimal):
             return value
-        if isinstance(value, (int, float)):
-            return Decimal(str(value))
-        if isinstance(value, str):
-            return Decimal(value)
-        return Decimal("0")
+        if value is None:
+            return Decimal('0')
+        # For numbers (int, float) convert via str to avoid binary float issues
+        return Decimal(str(value))
 
-    # ---------------------------------------------------------------------
-    # Sub‑total
-    # ---------------------------------------------------------------------
-    cart_lines: List[Dict[str, Any]] = request.get("cart_lines") or request.get(
-        "cartLines", []
+    # ---------- Sub‑total ----------
+    cart_lines: List[Dict[str, Any]] = request.get("cart_lines", [])
+    sub_total = sum(
+        (to_decimal(line.get("item_sub_total")) for line in cart_lines),
+        Decimal('0')
     )
-    sub_total = Decimal("0")
-    for line in cart_lines:
-        if "item_sub_total" in line:
-            sub_total += _to_decimal(line["item_sub_total"])
-        elif "price" in line and "quantity" in line:
-            sub_total += _to_decimal(line["price"]) * _to_decimal(line["quantity"])
 
-    # ---------------------------------------------------------------------
-    # Shipping & Sales Tax
-    # ---------------------------------------------------------------------
-    ship_info: List[Dict[str, Any]] = request.get("ship_info") or request.get(
-        "shipGroups", []
+    # ---------- Shipping ----------
+    ship_info: List[Dict[str, Any]] = request.get("ship_info", [])
+    total_shipping = sum(
+        (to_decimal(info.get("ship_estimate")) for info in ship_info),
+        Decimal('0')
     )
-    total_shipping = Decimal("0")
-    total_sales_tax = Decimal("0")
-    for grp in ship_info:
-        total_shipping += _to_decimal(
-            grp.get("ship_estimate") or grp.get("shippingCost") or 0
-        )
-        total_sales_tax += _to_decimal(
-            grp.get("total_tax") or grp.get("salesTax") or 0
-        )
 
-    # ---------------------------------------------------------------------
-    # Order‑level adjustments (not tied to a ship group)
-    # ---------------------------------------------------------------------
-    adjustments: List[Dict[str, Any]] = request.get("adjustments") or request.get(
-        "orderAdjustments", []
+    # ---------- Sales Tax ----------
+    total_sales_tax = sum(
+        (to_decimal(info.get("total_tax")) for info in ship_info),
+        Decimal('0')
     )
-    order_other_adjustment_total = Decimal("0")
+
+    # ---------- Other (non‑global) Adjustments ----------
+    adjustments: List[Dict[str, Any]] = request.get("adjustments", [])
+    order_other_adjustment_total = Decimal('0')
     for adj in adjustments:
-        amount = _to_decimal(adj.get("amount", 0))
-        is_percent = adj.get("is_percent", False)
-        if is_percent:
-            order_other_adjustment_total += (sub_total * amount) / Decimal("100")
-        else:
-            order_other_adjustment_total += amount
+        amount = to_decimal(adj.get("amount"))
+        if adj.get("is_percent"):
+            # Percentage of sub_total
+            amount = (sub_total * amount) / Decimal('100')
+        order_other_adjustment_total += amount
 
-    # ---------------------------------------------------------------------
-    # Global adjustments (apply to whole order)
-    # ---------------------------------------------------------------------
-    global_adjustments: List[Dict[str, Any]] = request.get(
-        "global_adjustments"
-    ) or request.get("globalAdjustments", [])
-    order_global_adjustments = Decimal("0")
+    # ---------- Global Adjustments ----------
+    global_adjustments: List[Dict[str, Any]] = request.get("global_adjustments", [])
+    order_global_adjustments = Decimal('0')
     for adj in global_adjustments:
-        ship_seq = adj.get("ship_group_seq_id")
-        # Include only when ship_group_seq_id is None or the sentinel "_NA_"
-        if ship_seq is None or ship_seq == "_NA_":
-            amount = _to_decimal(adj.get("amount", 0))
-            is_percent = adj.get("is_percent", False)
-            if is_percent:
-                order_global_adjustments += (sub_total * amount) / Decimal("100")
-            else:
-                order_global_adjustments += amount
-        # else: explicitly excluded
+        ship_group_seq_id = adj.get("ship_group_seq_id")
+        # Include only when ship_group_seq_id is None or exactly "_NA_"
+        if ship_group_seq_id is not None and ship_group_seq_id != "_NA_":
+            continue
+        amount = to_decimal(adj.get("amount"))
+        if adj.get("is_percent"):
+            amount = (sub_total * amount) / Decimal('100')
+        order_global_adjustments += amount
 
-    # ---------------------------------------------------------------------
-    # Grand total
-    # ---------------------------------------------------------------------
+    # ---------- Grand Total ----------
     grand_total = (
         sub_total
         + total_shipping
@@ -100,11 +77,15 @@ def calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, Any]:
         + order_global_adjustments
     )
 
+    # Helper to format Decimal as string with two decimal places
+    def fmt(value: Decimal) -> str:
+        return str(value.quantize(Decimal('0.00'), rounding=ROUND_HALF_EVEN))
+
     return {
-        "sub_total": sub_total,
-        "total_shipping": total_shipping,
-        "total_sales_tax": total_sales_tax,
-        "order_other_adjustment_total": order_other_adjustment_total,
-        "order_global_adjustments": order_global_adjustments,
-        "grand_total": grand_total,
+        "sub_total": fmt(sub_total),
+        "total_shipping": fmt(total_shipping),
+        "total_sales_tax": fmt(total_sales_tax),
+        "order_other_adjustment_total": fmt(order_other_adjustment_total),
+        "order_global_adjustments": fmt(order_global_adjustments),
+        "grand_total": fmt(grand_total),
     }

@@ -112,7 +112,6 @@ def process_java_file_to_neo4j(file_path, framework, target_method, migration_id
                                 ingester.create_interaction(target_method, table_name, "WRITE", migration_id)
 
     ingester.close()
-    print("[+] AST parsing and Neo4j graph injection complete.")
 
 # Test block for local execution
 def ingest_and_get_context(migration_id: str, file_path: str, target_method: str) -> dict:
@@ -166,6 +165,7 @@ def ingest_and_get_context(migration_id: str, file_path: str, target_method: str
             })
             
     driver.close()
+    print("[+] AST parsing and Neo4j graph injection complete.")
     
     return {
         "migration_id": migration_id,

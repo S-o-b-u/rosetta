@@ -21,6 +21,7 @@ class TierResult:
     passed: bool
     details: dict[str, Any] = field(default_factory=dict)
     feedback: str = ""
+    status: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -28,6 +29,7 @@ class TierResult:
             "passed": self.passed,
             "feedback": self.feedback,
             "details": self.details,
+            "status": self.status,
         }
 
 
@@ -47,20 +49,31 @@ class ParityReport:
     # Counts for quick display
     @property
     def tiers_passed(self) -> int:
-        return sum(1 for t in self.tiers if t.passed)
+        return sum(1 for t in self.tiers if t.passed and t.status not in ("superseded", "not_applicable"))
 
     @property
     def tiers_total(self) -> int:
-        return len(self.tiers)
+        return sum(1 for t in self.tiers if t.status not in ("superseded", "not_applicable"))
+
+    @property
+    def tiers_superseded(self) -> int:
+        return sum(1 for t in self.tiers if t.status == "superseded")
 
     @property
     def summary_line(self) -> str:
-        status = "✅ PASS" if self.overall_passed else "❌ FAIL"
-        return (
+        if self.baseline_mode == "provisional":
+            status = "⚠️ UNVERIFIED BASELINE" if self.overall_passed else "❌ FAIL"
+        else:
+            status = "✅ PASS" if self.overall_passed else "❌ FAIL"
+        
+        summary = (
             f"{status} [{self.method}]  "
-            f"{self.tiers_passed}/{self.tiers_total} tiers passed  "
-            f"(baseline: {self.baseline_mode})"
+            f"{self.tiers_passed}/{self.tiers_total} tiers passed"
         )
+        if self.tiers_superseded > 0:
+            summary += f" ({self.tiers_superseded} superseded)"
+        summary += f"  (baseline: {self.baseline_mode})"
+        return summary
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -85,11 +98,23 @@ class ParityReport:
             "-" * 60,
         ]
         for tier in self.tiers:
-            icon = "✅" if tier.passed else "❌"
-            lines.append(f"  {icon}  {tier.tier}")
-            if not tier.passed and tier.feedback:
-                for line in tier.feedback.splitlines():
-                    lines.append(f"      {line}")
+            status = getattr(tier, "status", None)
+            if status == "superseded":
+                lines.append(f"  ➖  {tier.tier} (superseded)")
+                if tier.feedback:
+                    for line in tier.feedback.splitlines():
+                        lines.append(f"      {line}")
+            elif status == "not_applicable":
+                lines.append(f"  ➖  {tier.tier} (not_applicable)")
+                if tier.feedback:
+                    for line in tier.feedback.splitlines():
+                        lines.append(f"      {line}")
+            else:
+                icon = "✅" if tier.passed else "❌"
+                lines.append(f"  {icon}  {tier.tier}")
+                if not tier.passed and tier.feedback:
+                    for line in tier.feedback.splitlines():
+                        lines.append(f"      {line}")
         lines.append("=" * 60)
         return "\n".join(lines)
 

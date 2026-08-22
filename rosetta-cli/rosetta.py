@@ -129,12 +129,15 @@ def _print_pipeline_stages(active_idx: int = -1):
 def _print_parity_report(parity_report: dict, target: str):
     """Render the full parity tier report using Rich tables."""
     if not RICH_AVAILABLE:
-        print(f"\n{'='*60}")
-        print(f"  PARITY REPORT — {target}")
-        print(f"{'='*60}")
-        for tier in parity_report.get("tiers", []):
-            icon = "✅" if tier["passed"] else "❌"
-            print(f"  {icon}  {tier['tier']}")
+        from core.parity_report import ParityReport, TierResult
+        tiers = [TierResult(**t) for t in parity_report.get("tiers", [])]
+        report = ParityReport(
+            method=parity_report.get("method", target),
+            baseline_mode=parity_report.get("baseline_mode", "unknown"),
+            overall_passed=parity_report.get("overall_passed", False),
+            tiers=tiers
+        )
+        print(report.render_console())
         return
 
     overall = parity_report.get("overall_passed", False)
@@ -175,13 +178,24 @@ def _print_parity_report(parity_report: dict, target: str):
     }
 
     for tier in parity_report.get("tiers", []):
-        icon = "[bold green]✅ PASS[/bold green]" if tier["passed"] else "[bold red]❌ FAIL[/bold red]"
+        status = tier.get("status")
+        if status == "superseded":
+            icon = "[bold yellow]➖ SKIP[/bold yellow]"
+        elif status == "not_applicable":
+            icon = "[bold yellow]➖ N/A[/bold yellow]"
+        else:
+            icon = "[bold green]✅ PASS[/bold green]" if tier["passed"] else "[bold red]❌ FAIL[/bold red]"
+            
         label = tier_labels.get(tier["tier"], tier["tier"])
         feedback = tier.get("feedback", "")
-        if tier["passed"]:
+        if status in ("superseded", "not_applicable"):
+            label = f"[dim]{label} ({status})[/dim]"
+            feedback_styled = f"[dim]{feedback}[/dim]"
+        elif tier["passed"]:
             feedback_styled = f"[dim]{feedback}[/dim]"
         else:
             feedback_styled = f"[red]{feedback}[/red]"
+            
         tier_table.add_row(icon, label, feedback_styled)
 
     console.print(tier_table)
@@ -389,6 +403,14 @@ def extract_java_method(java_code: str, method_name: str) -> str:
 def migrate(args):
     _banner()
 
+    try:
+        from core.golden import list_available_methods
+        if args.baseline_mode != "golden_file" and args.target in list_available_methods():
+            _print("[green][*] Golden manifest detected — upgrading baseline to: golden_file[/green]")
+            args.baseline_mode = "golden_file"
+    except Exception:
+        pass  # Failsafe if golden module isn't loaded
+
     if RICH_AVAILABLE:
         info_table = Table(box=box.SIMPLE, show_header=False, padding=(0, 1))
         info_table.add_column(style="dim", width=20)
@@ -422,6 +444,8 @@ def migrate(args):
         "migration_id":          migration_id,
         "file_path":             args.file,
         "target_method":         args.target,
+        "source_lang":           args.source_lang,
+        "target_framework":      args.target_framework,
         "java_code":             java_code,
         "test_payload":          {},
         "expected_legacy_output":{},
@@ -497,11 +521,14 @@ def migrate(args):
             f.write(final_state["pure_function_source"])
         written.append(("🧠", "Pure Logic",     path))
 
+    service_artifact_path = None
     if final_state.get("wrapped_service_source"):
-        path = f"{base_name}_service.py"
+        ext = final_state.get("service_extension", ".py")
+        path = f"{base_name}_service{ext}"
         with open(path, "w", encoding="utf-8") as f:
             f.write(final_state["wrapped_service_source"])
         written.append(("🚀", "Microservice",   path))
+        service_artifact_path = path
 
     main_path = os.path.join(args.output, "main.py")
     if not os.path.exists(main_path):
@@ -517,10 +544,17 @@ def migrate(args):
             art_table.add_row(icon, f"[green]{label}[/green]", path)
         console.print(art_table)
 
+        default_run_cmd = f"python {os.path.join(args.output, 'main.py')}"
+        entry_cmd = final_state.get('entry_command', 'python')
+        if service_artifact_path:
+            run_cmd = f"{entry_cmd} {service_artifact_path}"
+        else:
+            run_cmd = default_run_cmd
+        
         console.print(Panel(
             "[bold green]✅ Migration Certified![/bold green]\n\n"
             f"[dim]Start the domain service:[/dim]\n"
-            f"  [cyan]python {os.path.join(args.output, 'main.py')}[/cyan]\n\n"
+            f"  [cyan]{run_cmd}[/cyan]\n\n"
             f"[dim]Check parity via API:[/dim]\n"
             f"  [cyan]GET http://localhost:8001/parity/{args.target}[/cyan]",
             border_style="green",
@@ -529,7 +563,12 @@ def migrate(args):
     else:
         for icon, label, path in written:
             print(f"  {icon} {label}: {path}")
-        print(f"\n✅ Migration Certified! Run: python {main_path}")
+        entry_cmd = final_state.get('entry_command', 'python')
+        if service_artifact_path:
+            run_cmd = f"{entry_cmd} {service_artifact_path}"
+        else:
+            run_cmd = f"python {main_path}"
+        print(f"\n✅ Migration Certified! Run: {run_cmd}")
 
 
 def _write_main(main_path: str):
@@ -716,6 +755,8 @@ Examples:
     migrate_parser = subparsers.add_parser("migrate", help="Migrate a legacy Java method to a FastAPI microservice")
     migrate_parser.add_argument("--file", required=True, help="Path to the legacy Java source file")
     migrate_parser.add_argument("--target", required=True, help="Name of the method to migrate")
+    migrate_parser.add_argument("--source-lang", default="java", help="Source language parser plugin (default: java)")
+    migrate_parser.add_argument("--target-framework", default="fastapi", help="Target framework generator plugin (default: fastapi)")
     migrate_parser.add_argument("--output", default="./modern-invoices", help="Output directory")
     migrate_parser.add_argument(
         "--baseline-mode",

@@ -46,7 +46,7 @@ def _make_client() -> TestClient:
 def _run_fixture(fixture: GoldenFixture) -> dict:
     """POST the fixture input to the service and return the JSON response."""
     client = _make_client()
-    response = client.post("/calculate-grand-total", json=fixture.input)
+    response = client.post("/grand-total", json=fixture.input)
     assert response.status_code == 200, (
         f"[{fixture.fixture_id}] HTTP {response.status_code}: {response.text}"
     )
@@ -170,7 +170,7 @@ class T3GoldenFileEquivalenceTests(unittest.TestCase):
         client = _make_client()
         for fixture in _PROVIDER.all_fixtures():
             with self.subTest(fixture_id=fixture.fixture_id):
-                response = client.post("/calculate-grand-total", json=fixture.input)
+                response = client.post("/grand-total", json=fixture.input)
                 self.assertEqual(
                     response.status_code, 200,
                     f"[{fixture.fixture_id}] HTTP {response.status_code}: {response.text}",

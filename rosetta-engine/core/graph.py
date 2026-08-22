@@ -4,20 +4,34 @@ from core.state import RosettaState
 from core.agents import discovery_node, architecture_node
 from core.validator import validator_node
 from core.wrapper import wrapper_node
-from parsers.ast_ingester import ingest_and_get_context
+from plugins.source.java_adapter import JavaSourceAdapter
+from plugins.source.groovy_adapter import GroovySourceAdapter
+
+SUPPORTED_SOURCE_LANGS = {
+    "java": JavaSourceAdapter,
+    "groovy": GroovySourceAdapter
+}
 
 def ast_context_node(state: RosettaState) -> RosettaState:
     migration_id = state.get("migration_id", "unknown-migration")
     file_path = state["file_path"]
     target_method = state["target_method"]
+    source_lang = state.get("source_lang", "java")
     
-    print(f"\n[Node] AST/Neo4j Context: Ingesting {target_method}...")
+    print(f"\n[Node] AST/Neo4j Context: Ingesting {target_method} via {source_lang} adapter...")
+    
+    AdapterClass = SUPPORTED_SOURCE_LANGS.get(source_lang.lower())
+    if not AdapterClass:
+        print(f"[!] MIGRATION FAILED — Unsupported source language: {source_lang}")
+        return {"validation_passed": False, "validation_feedback": f"Unsupported source language: {source_lang}", "neo4j_context": None, "graph_context": "degraded"}
+        
     try:
-        context = ingest_and_get_context(migration_id, file_path, target_method)
+        adapter = AdapterClass()
+        context = adapter.ingest_and_get_context(migration_id, file_path, target_method)
         return {"neo4j_context": context}
     except Exception as e:
-        print(f"[!] AST Ingestion failed: {e}")
-        return {"neo4j_context": None}
+        print(f"[!] MIGRATION FAILED — {source_lang} adapter failed: {e}")
+        return {"validation_passed": False, "validation_feedback": f"{source_lang} adapter failed: {e}", "neo4j_context": None, "graph_context": "degraded"}
 
 
 # ==========================================
