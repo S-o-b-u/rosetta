@@ -133,7 +133,7 @@ class T4PropertyInvariantTests(unittest.TestCase):
                                   + order_other_adjustment_total + order_global_adjustments
         """
         client = _make_client()
-        response = client.post("/calculate-grand-total", json=payload)
+        response = client.post("/grand-total", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
 
         data = response.json()
@@ -172,7 +172,7 @@ class T4PropertyInvariantTests(unittest.TestCase):
             "global_adjustments": [],
         }
         client = _make_client()
-        response = client.post("/calculate-grand-total", json=payload)
+        response = client.post("/grand-total", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
 
         expected_sub_total = sum(
@@ -201,7 +201,7 @@ class T4PropertyInvariantTests(unittest.TestCase):
             "global_adjustments": [],
         }
         client = _make_client()
-        response = client.post("/calculate-grand-total", json=payload)
+        response = client.post("/grand-total", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
 
         data = response.json()
@@ -220,8 +220,8 @@ class T4PropertyInvariantTests(unittest.TestCase):
         INVARIANT 5: Same input always produces same output (no hidden state).
         """
         client = _make_client()
-        r1 = client.post("/calculate-grand-total", json=payload).json()
-        r2 = client.post("/calculate-grand-total", json=payload).json()
+        r1 = client.post("/grand-total", json=payload).json()
+        r2 = client.post("/grand-total", json=payload).json()
         self.assertEqual(r1, r2, f"Non-deterministic result for payload: {payload}")
 
     @given(st.lists(_global_adjustment_excluded, min_size=1, max_size=5))
@@ -238,7 +238,7 @@ class T4PropertyInvariantTests(unittest.TestCase):
             "global_adjustments": excluded_adjs,
         }
         client = _make_client()
-        response = client.post("/calculate-grand-total", json=payload)
+        response = client.post("/grand-total", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
 
         actual_global = _q(response.json()["order_global_adjustments"])
@@ -264,7 +264,7 @@ class T4PropertyInvariantTests(unittest.TestCase):
             "global_adjustments": included_adjs,
         }
         client = _make_client()
-        response = client.post("/calculate-grand-total", json=payload)
+        response = client.post("/grand-total", json=payload)
         self.assertEqual(response.status_code, 200, response.text)
 
         actual_global = _q(response.json()["order_global_adjustments"])

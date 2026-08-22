@@ -8,7 +8,10 @@ class RosettaState(TypedDict):
     file_path: str
     target_method: str
     java_code: str
+    source_lang: str
+    target_framework: str
     neo4j_context: NotRequired[Dict[str, Any]]
+    graph_context: NotRequired[str]
 
     # ==========================================
     # 2. AGENT OUTPUTS (Populated during pipeline)
@@ -21,6 +24,8 @@ class RosettaState(TypedDict):
     #   wrapped_service_source — deterministic FastAPI wrapper (output of Wrapper Node)
     pure_function_source: Optional[str]
     wrapped_service_source: Optional[str]
+    service_extension: Optional[str]
+    entry_command: Optional[str]
 
     # Kept for backwards-compatibility with legacy tests and java_executed adapter mode.
     # In the live pipeline, candidate_source is the same value as pure_function_source.

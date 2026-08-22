@@ -1,0 +1,84 @@
+{
+  "method": "getTotalDiscountAmount",
+  "baseline_mode": "provisional",
+  "overall_passed": true,
+  "tiers_passed": 3,
+  "tiers_total": 3,
+  "summary": "\u2705 PASS [getTotalDiscountAmount]  3/3 tiers passed  (baseline: provisional)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 Formula Completeness: PASS",
+      "details": {
+        "tier": "T1_formula_completeness",
+        "passed": true,
+        "missing_terms": [],
+        "extra_terms": [],
+        "checked_terms": [
+          "total_discount_amount"
+        ]
+      }
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": true,
+      "feedback": "T3 skipped: no golden fixtures found for this method",
+      "details": {}
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Shadow: 3 case(s) passed",
+      "details": {
+        "cases": [
+          {
+            "name": "zero_discount",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_discount_amount": "0.00"
+            },
+            "actual_normalized": {
+              "total_discount_amount": "0.00"
+            },
+            "differences": [],
+            "input": {
+              "totalDiscountAmount": 0.0
+            }
+          },
+          {
+            "name": "positive_discount",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_discount_amount": "25.75"
+            },
+            "actual_normalized": {
+              "total_discount_amount": "25.75"
+            },
+            "differences": [],
+            "input": {
+              "totalDiscountAmount": 25.75
+            }
+          },
+          {
+            "name": "large_discount",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_discount_amount": "9999.99"
+            },
+            "actual_normalized": {
+              "total_discount_amount": "9999.99"
+            },
+            "differences": [],
+            "input": {
+              "totalDiscountAmount": 9999.99
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

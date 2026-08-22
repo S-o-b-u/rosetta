@@ -1,0 +1,98 @@
+{
+  "method": "getTotalShipping",
+  "baseline_mode": "provisional",
+  "overall_passed": true,
+  "tiers_passed": 3,
+  "tiers_total": 3,
+  "summary": "\u2705 PASS [getTotalShipping]  3/3 tiers passed  (baseline: provisional)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 Formula Completeness: PASS",
+      "details": {
+        "tier": "T1_formula_completeness",
+        "passed": true,
+        "missing_terms": [],
+        "extra_terms": [],
+        "checked_terms": [
+          "total_shipping"
+        ]
+      }
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": true,
+      "feedback": "T3 skipped: no golden fixtures found for this method",
+      "details": {}
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Shadow: 3 case(s) passed",
+      "details": {
+        "cases": [
+          {
+            "name": "empty_ship_info",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_shipping": "0.00"
+            },
+            "actual_normalized": {
+              "total_shipping": "0.00"
+            },
+            "differences": [],
+            "input": {
+              "shipInfo": []
+            }
+          },
+          {
+            "name": "single_ship_estimate",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_shipping": "12.34"
+            },
+            "actual_normalized": {
+              "total_shipping": "12.34"
+            },
+            "differences": [],
+            "input": {
+              "shipInfo": [
+                {
+                  "shipEstimate": 12.34
+                }
+              ]
+            }
+          },
+          {
+            "name": "multiple_ship_estimates",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "total_shipping": "16.74"
+            },
+            "actual_normalized": {
+              "total_shipping": "16.74"
+            },
+            "differences": [],
+            "input": {
+              "shipInfo": [
+                {
+                  "shipEstimate": 5.99
+                },
+                {
+                  "shipEstimate": 7.5
+                },
+                {
+                  "shipEstimate": 3.25
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

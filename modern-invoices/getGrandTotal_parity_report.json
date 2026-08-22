@@ -2,9 +2,9 @@
   "method": "getGrandTotal",
   "baseline_mode": "golden_file",
   "overall_passed": true,
-  "tiers_passed": 3,
-  "tiers_total": 3,
-  "summary": "\u2705 PASS [getGrandTotal]  3/3 tiers passed  (baseline: golden_file)",
+  "tiers_passed": 2,
+  "tiers_total": 2,
+  "summary": "\u2705 PASS [getGrandTotal]  2/2 tiers passed (1 superseded)  (baseline: golden_file)",
   "tiers": [
     {
       "tier": "T1_formula_completeness",
@@ -24,7 +24,8 @@
           "order_other_adjustment_total",
           "order_global_adjustments"
         ]
-      }
+      },
+      "status": null
     },
     {
       "tier": "T3_golden_file_equivalence",
@@ -371,13 +372,15 @@
           }
         ],
         "capture_mode": "hand_authored"
-      }
+      },
+      "status": null
     },
     {
       "tier": "shadow_validation",
       "passed": true,
-      "feedback": "Shadow skipped: using golden_file oracle instead",
-      "details": {}
+      "feedback": "Skipped: golden_file oracle supersedes LLM-guessed shadow cases",
+      "details": {},
+      "status": "superseded"
     }
   ]
 }
