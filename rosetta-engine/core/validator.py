@@ -169,6 +169,7 @@ def validator_node(state: RosettaState) -> RosettaState:
                 "expected_normalized": comparison.expected_normalized,
                 "actual_normalized": comparison.actual_normalized,
                 "arithmetic_trace": fixture.arithmetic_trace,
+                "input": fixture.input,
             })
             if not comparison.passed:
                 golden_tier_passed = False
@@ -187,8 +188,23 @@ def validator_node(state: RosettaState) -> RosettaState:
             failing = [c for c in golden_tier_details if not c["passed"]]
             feedback_parts = []
             for case in failing:
-                diff_str = "; ".join(case.get("differences", []))
-                feedback_parts.append(f"[{case['fixture_id']}] {diff_str}")
+                if "feedback" in case and not "differences" in case:
+                    # It failed due to an exception
+                    feedback_parts.append(
+                        f"[{case['fixture_id']}]\n"
+                        f"  Exception: {case['feedback']}"
+                    )
+                else:
+                    diff_str = "; ".join(case.get("differences", []))
+                    input_str = json.dumps(case.get("input", {}))
+                    trace_str = json.dumps(case.get("arithmetic_trace", {}))
+                    
+                    feedback_parts.append(
+                        f"[{case['fixture_id']}]\n"
+                        f"  Input Payload: {input_str}\n"
+                        f"  Expected Trace: {trace_str}\n"
+                        f"  Differences: {diff_str}"
+                    )
             t3_feedback = "T3 Golden-File FAIL:\n" + "\n".join(feedback_parts)
             parity = build_parity_report(
                 state["target_method"],
@@ -222,78 +238,92 @@ def validator_node(state: RosettaState) -> RosettaState:
     }]
 
     shadow_results: list[dict] = []
-    for case in test_cases:
-        payload = case.get("payload", {})
-        expected_output = case.get("expected_output", {})
+    
+    if baseline_mode == "golden_file":
+        tier_results.append(TierResult(
+            tier="shadow_validation",
+            passed=True,
+            feedback="Shadow skipped: using golden_file oracle instead",
+        ))
+    else:
+        for case in test_cases:
+            payload = case.get("payload", {})
+            expected_output = case.get("expected_output", {})
 
-        if baseline_mode == "java_executed":
+            if baseline_mode == "java_executed":
+                try:
+                    expected_output = execute_legacy_baseline(
+                        state.get("baseline_command"), payload
+                    )
+                except BaselineError as exc:
+                    parity = build_parity_report(
+                        state["target_method"], baseline_mode, tier_results
+                    )
+                    return {
+                        "validation_passed": False,
+                        "validation_feedback": str(exc),
+                        "validation_results": shadow_results,
+                        "parity_report": parity.as_dict(),
+                    }
+
             try:
-                expected_output = execute_legacy_baseline(
-                    state.get("baseline_command"), payload
-                )
-            except BaselineError as exc:
+                actual_output = calc_func(payload)
+            except Exception as exc:
+                error_msg = f"Case '{case.get('name', 'unnamed')}' raised exception: {exc}"
+                tier_results.append(TierResult(
+                    tier="shadow_validation",
+                    passed=False,
+                    feedback=error_msg,
+                ))
                 parity = build_parity_report(
                     state["target_method"], baseline_mode, tier_results
                 )
                 return {
                     "validation_passed": False,
-                    "validation_feedback": str(exc),
+                    "validation_feedback": error_msg,
                     "validation_results": shadow_results,
                     "parity_report": parity.as_dict(),
                 }
 
-        try:
-            actual_output = calc_func(payload)
-        except Exception as exc:
-            error_msg = f"Case '{case.get('name', 'unnamed')}' raised exception: {exc}"
-            tier_results.append(TierResult(
-                tier="shadow_validation",
-                passed=False,
-                feedback=error_msg,
-            ))
-            parity = build_parity_report(
-                state["target_method"], baseline_mode, tier_results
-            )
-            return {
-                "validation_passed": False,
-                "validation_feedback": error_msg,
-                "validation_results": shadow_results,
-                "parity_report": parity.as_dict(),
-            }
+            comparison = compare_outputs(expected_output, actual_output)
+            shadow_results.append({
+                "name": case.get("name", "unnamed"),
+                "baseline_mode": baseline_mode,
+                "passed": comparison.passed,
+                "expected_normalized": comparison.expected_normalized,
+                "actual_normalized": comparison.actual_normalized,
+                "differences": comparison.differences,
+                "input": payload,
+            })
+            if not comparison.passed:
+                input_str = json.dumps(payload)
+                feedback = (
+                    f"Case '{case.get('name', 'unnamed')}':\n"
+                    f"  Input Payload: {input_str}\n"
+                    f"  Differences: {comparison.feedback}"
+                )
+                print("\n[-] SHADOW MISMATCH: Sending error diff back to Architecture Agent.")
+                tier_results.append(TierResult(
+                    tier="shadow_validation",
+                    passed=False,
+                    feedback=feedback,
+                ))
+                parity = build_parity_report(
+                    state["target_method"], baseline_mode, tier_results
+                )
+                return {
+                    "validation_passed": False,
+                    "validation_feedback": feedback,
+                    "validation_results": shadow_results,
+                    "parity_report": parity.as_dict(),
+                }
 
-        comparison = compare_outputs(expected_output, actual_output)
-        shadow_results.append({
-            "name": case.get("name", "unnamed"),
-            "baseline_mode": baseline_mode,
-            "passed": comparison.passed,
-            "expected_normalized": comparison.expected_normalized,
-            "actual_normalized": comparison.actual_normalized,
-            "differences": comparison.differences,
-        })
-        if not comparison.passed:
-            feedback = f"Case '{case.get('name', 'unnamed')}': {comparison.feedback}"
-            print("\n[-] SHADOW MISMATCH: Sending error diff back to Architecture Agent.")
-            tier_results.append(TierResult(
-                tier="shadow_validation",
-                passed=False,
-                feedback=feedback,
-            ))
-            parity = build_parity_report(
-                state["target_method"], baseline_mode, tier_results
-            )
-            return {
-                "validation_passed": False,
-                "validation_feedback": feedback,
-                "validation_results": shadow_results,
-                "parity_report": parity.as_dict(),
-            }
-
-    tier_results.append(TierResult(
-        tier="shadow_validation",
-        passed=True,
-        feedback=f"Shadow: {len(shadow_results)} case(s) passed",
-        details={"cases": shadow_results},
-    ))
+        tier_results.append(TierResult(
+            tier="shadow_validation",
+            passed=True,
+            feedback=f"Shadow: {len(shadow_results)} case(s) passed",
+            details={"cases": shadow_results},
+        ))
 
     # ------------------------------------------------------------------
     # All tiers passed

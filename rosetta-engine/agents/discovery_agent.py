@@ -2,7 +2,7 @@ import os
 import json
 from typing import TypedDict, List, Dict
 from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from neo4j import GraphDatabase
 from dotenv import load_dotenv
@@ -79,7 +79,7 @@ def run_discovery_agent(state: AgentState) -> AgentState:
     state['neo4j_context'] = neo4j_data
     
     # 2. Initialize LLM (Ensure GEMINI_API_KEY is in your environment variables)
-    llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0) # Temp 0 for deterministic output
+    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0) # Temp 0 for deterministic output
     
     # 3. Bind the Pydantic schema to force JSON output
     structured_llm = llm.with_structured_output(BusinessLogicPayload)

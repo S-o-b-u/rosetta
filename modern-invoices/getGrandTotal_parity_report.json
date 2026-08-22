@@ -1,0 +1,383 @@
+{
+  "method": "getGrandTotal",
+  "baseline_mode": "golden_file",
+  "overall_passed": true,
+  "tiers_passed": 3,
+  "tiers_total": 3,
+  "summary": "\u2705 PASS [getGrandTotal]  3/3 tiers passed  (baseline: golden_file)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 Formula Completeness: PASS",
+      "details": {
+        "tier": "T1_formula_completeness",
+        "passed": true,
+        "missing_terms": [],
+        "extra_terms": [
+          "grand_total"
+        ],
+        "checked_terms": [
+          "sub_total",
+          "total_shipping",
+          "total_sales_tax",
+          "order_other_adjustment_total",
+          "order_global_adjustments"
+        ]
+      }
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": true,
+      "feedback": "T3 Golden-File: PASS",
+      "details": {
+        "cases": [
+          {
+            "fixture_id": "case_01_empty_cart",
+            "description": "Empty cart: all lists empty. Every term is zero. Grand total is zero.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "0.00",
+              "total_shipping": "0.00",
+              "total_sales_tax": "0.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "0.00"
+            },
+            "actual_normalized": {
+              "sub_total": "0.00",
+              "total_shipping": "0.00",
+              "total_sales_tax": "0.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "0.00"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([]) = 0.00",
+              "total_shipping": "SUM([]) = 0.00",
+              "total_sales_tax": "SUM([]) = 0.00",
+              "order_other_adjustment_total": "SUM([]) = 0.00",
+              "order_global_adjustments": "SUM([]) = 0.00",
+              "grand_total": "0.00 + 0.00 + 0.00 + 0.00 + 0.00 = 0.00"
+            },
+            "input": {
+              "cart_lines": [],
+              "ship_info": [],
+              "adjustments": [],
+              "global_adjustments": []
+            }
+          },
+          {
+            "fixture_id": "case_02_single_item",
+            "description": "Single cart line, no shipping, no tax, no adjustments. Sub-total drives grand total.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "50.00",
+              "total_shipping": "0.00",
+              "total_sales_tax": "0.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "50.00"
+            },
+            "actual_normalized": {
+              "sub_total": "50.00",
+              "total_shipping": "0.00",
+              "total_sales_tax": "0.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "50.00"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([50.00]) = 50.00",
+              "total_shipping": "SUM([]) = 0.00",
+              "total_sales_tax": "SUM([]) = 0.00",
+              "order_other_adjustment_total": "SUM([]) = 0.00",
+              "order_global_adjustments": "SUM([]) = 0.00",
+              "grand_total": "50.00 + 0.00 + 0.00 + 0.00 + 0.00 = 50.00"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "50.00"
+                }
+              ],
+              "ship_info": [],
+              "adjustments": [],
+              "global_adjustments": []
+            }
+          },
+          {
+            "fixture_id": "case_03_multi_item_with_tax",
+            "description": "Three cart lines, one ship group with shipping and tax. No adjustments. This is the canonical 5-term exercise.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "200.00",
+              "total_shipping": "15.00",
+              "total_sales_tax": "14.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "229.00"
+            },
+            "actual_normalized": {
+              "sub_total": "200.00",
+              "total_shipping": "15.00",
+              "total_sales_tax": "14.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "229.00"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([120.00, 30.00, 50.00]) = 200.00",
+              "total_shipping": "SUM([15.00]) = 15.00",
+              "total_sales_tax": "SUM([14.00]) = 14.00",
+              "order_other_adjustment_total": "SUM([]) = 0.00",
+              "order_global_adjustments": "SUM([]) = 0.00",
+              "grand_total": "200.00 + 15.00 + 14.00 + 0.00 + 0.00 = 229.00"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "120.00"
+                },
+                {
+                  "item_sub_total": "30.00"
+                },
+                {
+                  "item_sub_total": "50.00"
+                }
+              ],
+              "ship_info": [
+                {
+                  "ship_estimate": "15.00",
+                  "total_tax": "14.00"
+                }
+              ],
+              "adjustments": [],
+              "global_adjustments": []
+            }
+          },
+          {
+            "fixture_id": "case_04_fixed_adjustment",
+            "description": "One cart line with a fixed negative adjustment (discount). Matches the canonical live-run failure fixture from the equivalence-testing-implementation-plan.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "120.00",
+              "total_shipping": "10.00",
+              "total_sales_tax": "8.40",
+              "order_other_adjustment_total": "-10.00",
+              "order_global_adjustments": "2.00",
+              "grand_total": "130.40"
+            },
+            "actual_normalized": {
+              "sub_total": "120.00",
+              "total_shipping": "10.00",
+              "total_sales_tax": "8.40",
+              "order_other_adjustment_total": "-10.00",
+              "order_global_adjustments": "2.00",
+              "grand_total": "130.40"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([120.00]) = 120.00",
+              "total_shipping": "SUM([10.00]) = 10.00",
+              "total_sales_tax": "SUM([8.40]) = 8.40",
+              "order_other_adjustment_total": "fixed amount = -10.00",
+              "order_global_adjustments": "fixed amount (ship_group_seq_id is null) = 2.00",
+              "grand_total": "120.00 + 10.00 + 8.40 + (-10.00) + 2.00 = 130.40"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "120.00"
+                }
+              ],
+              "ship_info": [
+                {
+                  "ship_estimate": "10.00",
+                  "total_tax": "8.40"
+                }
+              ],
+              "adjustments": [
+                {
+                  "amount": "-10.00",
+                  "is_percent": false,
+                  "ship_group_seq_id": null
+                }
+              ],
+              "global_adjustments": [
+                {
+                  "amount": "2.00",
+                  "is_percent": false,
+                  "ship_group_seq_id": null
+                }
+              ]
+            }
+          },
+          {
+            "fixture_id": "case_05_percentage_adjustment",
+            "description": "Percentage-based adjustment applied to sub_total only (is_percent=true, not global). The 10% adjustment on 200.00 = -20.00.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "200.00",
+              "total_shipping": "12.00",
+              "total_sales_tax": "16.00",
+              "order_other_adjustment_total": "-20.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "208.00"
+            },
+            "actual_normalized": {
+              "sub_total": "200.00",
+              "total_shipping": "12.00",
+              "total_sales_tax": "16.00",
+              "order_other_adjustment_total": "-20.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "208.00"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([200.00]) = 200.00",
+              "total_shipping": "SUM([12.00]) = 12.00",
+              "total_sales_tax": "SUM([16.00]) = 16.00",
+              "order_other_adjustment_total": "is_percent=true: (200.00 * -10.00) / 100 = -20.00",
+              "order_global_adjustments": "SUM([]) = 0.00",
+              "grand_total": "200.00 + 12.00 + 16.00 + (-20.00) + 0.00 = 208.00"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "200.00"
+                }
+              ],
+              "ship_info": [
+                {
+                  "ship_estimate": "12.00",
+                  "total_tax": "16.00"
+                }
+              ],
+              "adjustments": [
+                {
+                  "amount": "-10.00",
+                  "is_percent": true,
+                  "ship_group_seq_id": null
+                }
+              ],
+              "global_adjustments": []
+            }
+          },
+          {
+            "fixture_id": "case_06_global_adjustment_na",
+            "description": "Global adjustment with ship_group_seq_id='_NA_' should be included (treated the same as null). Verifies the _NA_ sentinel check.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "100.00",
+              "total_shipping": "8.00",
+              "total_sales_tax": "7.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "5.00",
+              "grand_total": "120.00"
+            },
+            "actual_normalized": {
+              "sub_total": "100.00",
+              "total_shipping": "8.00",
+              "total_sales_tax": "7.00",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "5.00",
+              "grand_total": "120.00"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([100.00]) = 100.00",
+              "total_shipping": "SUM([8.00]) = 8.00",
+              "total_sales_tax": "SUM([7.00]) = 7.00",
+              "order_other_adjustment_total": "SUM([]) = 0.00",
+              "order_global_adjustments": "ship_group_seq_id='_NA_' => included: fixed 5.00",
+              "grand_total": "100.00 + 8.00 + 7.00 + 0.00 + 5.00 = 120.00"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "100.00"
+                }
+              ],
+              "ship_info": [
+                {
+                  "ship_estimate": "8.00",
+                  "total_tax": "7.00"
+                }
+              ],
+              "adjustments": [],
+              "global_adjustments": [
+                {
+                  "amount": "5.00",
+                  "is_percent": false,
+                  "ship_group_seq_id": "_NA_"
+                }
+              ]
+            }
+          },
+          {
+            "fixture_id": "case_07_ship_group_excluded",
+            "description": "Global adjustment with a real ship_group_seq_id ('GRP1') should be EXCLUDED from global adjustments. Verifies that the ship-group filter works correctly.",
+            "passed": true,
+            "differences": [],
+            "expected_normalized": {
+              "sub_total": "150.00",
+              "total_shipping": "20.00",
+              "total_sales_tax": "10.50",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "180.50"
+            },
+            "actual_normalized": {
+              "sub_total": "150.00",
+              "total_shipping": "20.00",
+              "total_sales_tax": "10.50",
+              "order_other_adjustment_total": "0.00",
+              "order_global_adjustments": "0.00",
+              "grand_total": "180.50"
+            },
+            "arithmetic_trace": {
+              "sub_total": "SUM([150.00]) = 150.00",
+              "total_shipping": "SUM([20.00]) = 20.00",
+              "total_sales_tax": "SUM([10.50]) = 10.50",
+              "order_other_adjustment_total": "SUM([]) = 0.00",
+              "order_global_adjustments": "ship_group_seq_id='GRP1' => excluded: 0.00",
+              "grand_total": "150.00 + 20.00 + 10.50 + 0.00 + 0.00 = 180.50"
+            },
+            "input": {
+              "cart_lines": [
+                {
+                  "item_sub_total": "150.00"
+                }
+              ],
+              "ship_info": [
+                {
+                  "ship_estimate": "20.00",
+                  "total_tax": "10.50"
+                }
+              ],
+              "adjustments": [],
+              "global_adjustments": [
+                {
+                  "amount": "99.00",
+                  "is_percent": false,
+                  "ship_group_seq_id": "GRP1"
+                }
+              ]
+            }
+          }
+        ],
+        "capture_mode": "hand_authored"
+      }
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Shadow skipped: using golden_file oracle instead",
+      "details": {}
+    }
+  ]
+}

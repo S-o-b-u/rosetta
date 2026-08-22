@@ -1,7 +1,7 @@
 import json
 from typing import TypedDict
 from pydantic import BaseModel, Field
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 
@@ -36,7 +36,7 @@ def run_architecture_agent(state: AgentState) -> AgentState:
         raise ValueError("Missing business_logic in state. Discovery Agent must run first.")
     
     # Initialize Gemini (Using the stable 3.6-flash model)
-    llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0)
+    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0)
     
     # Bind the Pydantic schema to force structured output
     structured_llm = llm.with_structured_output(MicroserviceArtifacts)
