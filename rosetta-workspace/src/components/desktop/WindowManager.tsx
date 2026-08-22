@@ -254,114 +254,20 @@ export function WindowManager({
     (w) => w.state === "normal" || w.state === "maximized"
   );
 
-  // ── Pan / Zoom state ──
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const isPanning = useRef(false);
-  const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
-
-  const onCanvasPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      // Only pan on Shift+click or middle-click on the background (not on a window)
-      const target = e.target as HTMLElement;
-      const isCanvas =
-        target.getAttribute("data-canvas") === "true";
-      if (!isCanvas) return;
-
-      const isShiftClick = e.shiftKey && e.button === 0;
-      const isMiddleClick = e.button === 1;
-      if (!isShiftClick && !isMiddleClick) return;
-
-      e.preventDefault();
-      isPanning.current = true;
-      panStart.current = {
-        x: e.clientX,
-        y: e.clientY,
-        panX: panOffset.x,
-        panY: panOffset.y,
-      };
-
-      const onMove = (ev: PointerEvent) => {
-        if (!isPanning.current) return;
-        ev.preventDefault();
-        const dx = ev.clientX - panStart.current.x;
-        const dy = ev.clientY - panStart.current.y;
-        setPanOffset({
-          x: panStart.current.panX + dx,
-          y: panStart.current.panY + dy,
-        });
-      };
-
-      const onUp = () => {
-        isPanning.current = false;
-        document.removeEventListener("pointermove", onMove);
-        document.removeEventListener("pointerup", onUp);
-      };
-
-      document.addEventListener("pointermove", onMove);
-      document.addEventListener("pointerup", onUp);
-    },
-    [panOffset]
-  );
-
-  const onCanvasWheel = useCallback(
-    (e: React.WheelEvent<HTMLDivElement>) => {
-      // Only zoom when Ctrl is held (pinch gesture)
-      if (!e.ctrlKey) return;
-      e.preventDefault();
-      setZoom((prev) => {
-        const delta = e.deltaY > 0 ? -0.05 : 0.05;
-        return Math.min(1.5, Math.max(0.5, prev + delta));
-      });
-    },
-    []
-  );
-
-  // Reset pan/zoom on double-click on empty canvas
-  const onCanvasDoubleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      if (target.getAttribute("data-canvas") !== "true") return;
-      setPanOffset({ x: 0, y: 0 });
-      setZoom(1);
-    },
-    []
-  );
-
   return (
     <WindowManagerContext.Provider value={ctxValue}>
       {/* Desktop workspace area where windows live */}
-      <div
-        className="flex-1 relative z-10 overflow-hidden"
-        onPointerDown={onCanvasPointerDown}
-        onWheel={onCanvasWheel}
-        onDoubleClick={onCanvasDoubleClick}
-        style={{ cursor: isPanning.current ? "grabbing" : "default" }}
-      >
-        {/* Pannable / zoomable transform container */}
-        <div
-          data-canvas="true"
-          className="absolute inset-0"
-          style={{
-            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
-            transformOrigin: "center center",
-            transition: isPanning.current
-              ? "none"
-              : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          }}
-        >
-          {visibleWindows.map((win) => (
-            <RosettaWindow
-              key={win.id}
-              window={win}
-              actions={actions}
-              desktopRef={desktopRef}
-            />
-          ))}
-        </div>
+      <div className="flex-1 relative z-10 overflow-hidden">
+        {visibleWindows.map((win) => (
+          <RosettaWindow
+            key={win.id}
+            window={win}
+            actions={actions}
+            desktopRef={desktopRef}
+          />
+        ))}
       </div>
       {children}
     </WindowManagerContext.Provider>
   );
 }
-

@@ -138,6 +138,39 @@ def architecture_node(state: RosettaState) -> RosettaState:
         {state["validation_feedback"]}
         """
 
+    # Build golden fixture contract from state (or use hardcoded defaults for getGrandTotal)
+    formula_ir = state.get("formula_ir") or {}
+    formula_terms = formula_ir.get("formula_terms", []) if formula_ir else []
+    required_output_fields = (
+        ", ".join(t["name"] for t in formula_terms if t.get("required", True)) + ", grand_total"
+        if formula_terms
+        else "sub_total, total_shipping, total_sales_tax, order_other_adjustment_total, order_global_adjustments, grand_total"
+    )
+    
+    golden_input_schema = json.dumps({
+        "cart_lines": [{"item_sub_total": "50.00"}],
+        "ship_info": [{"ship_estimate": "10.00", "total_tax": "8.40"}],
+        "adjustments": [{"amount": "-10.00", "is_percent": False, "ship_group_seq_id": None}],
+        "global_adjustments": [{"amount": "2.00", "is_percent": False, "ship_group_seq_id": None}]
+    }, indent=2)
+    
+    golden_example = json.dumps({
+        "input": {
+            "cart_lines": [{"item_sub_total": "120.00"}],
+            "ship_info": [{"ship_estimate": "10.00", "total_tax": "8.40"}],
+            "adjustments": [{"amount": "-10.00", "is_percent": False, "ship_group_seq_id": None}],
+            "global_adjustments": [{"amount": "2.00", "is_percent": False, "ship_group_seq_id": None}]
+        },
+        "expected_output": {
+            "sub_total": "120.00",
+            "total_shipping": "10.00",
+            "total_sales_tax": "8.40",
+            "order_other_adjustment_total": "-10.00",
+            "order_global_adjustments": "2.00",
+            "grand_total": "130.40"
+        }
+    }, indent=2)
+
     prompt = PromptTemplate.from_template("""
     You are an elite Python Backend Architect. Your job is to convert the abstract 
     business logic and data requirements JSON below into a production-ready, pure Python function.
@@ -148,11 +181,32 @@ def architecture_node(state: RosettaState) -> RosettaState:
     - The function MUST return a `dict`.
     - Do NOT import or use FastAPI, APIRouter, or Pydantic. Use only the Python standard library.
     - Do NOT write async functions. Use standard synchronous `def`.
-    - DYNAMIC COMPUTATION RULE: Look at the input payload structure inside the JSON. If it contains list or array fields, your Python code MUST iterate through those lists, extract numeric values, and compute actual sums. Never return hardcoded zero values if input lines exist.
-    - FORMULA COMPLETENESS RULE: If the business logic contains a formula or multiple output components, use every required component in the final calculation. Do not return one component as the grand total.
-    - RESPONSE CONTRACT RULE: Return all output fields described by the business logic, using stable snake_case names. Preserve every component even when its value is zero.
-    - TDD DEBUGGING RULE: If you are retrying because a previous attempt failed validation, look extremely closely at the `validation_feedback`. The feedback will now include the exact `Input Payload` that caused the failure, the legacy `Expected Trace` (intermediate math steps), and the specific `Differences`. Use this concrete data to trace your code's execution, identify exactly why your logic calculated the wrong value for that payload, and fix the bug in your next version.
+    - DYNAMIC COMPUTATION RULE: Iterate through all list fields in the input. Never hardcode zero.
+    - FORMULA COMPLETENESS RULE: Use every required component in the final calculation.
+    - RESPONSE CONTRACT RULE: Return ALL required output fields. Even if a component is zero, include it.
+    - TDD DEBUGGING RULE: If retrying, study the validation_feedback carefully — it includes the exact input, expected trace, and differences. Fix the specific bug.
 
+    GOLDEN FIXTURE CONTRACT — your function MUST match this exactly:
+
+    Input schema (exact keys your function will receive in `request`):
+    {golden_input_schema}
+
+    Required output fields (ALL must be present in your returned dict, even when zero):
+    {required_output_fields}
+
+    Example golden fixture (input → expected output you must reproduce):
+    {golden_example}
+
+    Computation rules derived from the golden arithmetic:
+    - sub_total: sum of cart_lines[].item_sub_total (as Decimal)
+    - total_shipping: sum of ship_info[].ship_estimate (as Decimal)
+    - total_sales_tax: sum of ship_info[].total_tax (as Decimal)
+    - order_other_adjustment_total: sum of adjustments[].amount where ship_group_seq_id is NOT None, else fixed amount if ship_group_seq_id is None
+      (simpler: sum ALL adjustments[].amount that are not global — if ship_group_seq_id is explicitly null, treat as global)
+    - order_global_adjustments: sum of global_adjustments[].amount (as Decimal)
+    - grand_total: sub_total + total_shipping + total_sales_tax + order_other_adjustment_total + order_global_adjustments
+    - All output values must be formatted as strings with 2 decimal places (e.g. "130.40").
+    - Use Python's `decimal.Decimal` for all arithmetic to avoid floating-point errors.
     
     {feedback_section}
     
@@ -166,7 +220,10 @@ def architecture_node(state: RosettaState) -> RosettaState:
     response = chain.invoke({
         "target_method": state["target_method"],
         "logic_json": state["logic_json"],
-        "feedback_section": feedback_section
+        "feedback_section": feedback_section,
+        "golden_input_schema": golden_input_schema,
+        "required_output_fields": required_output_fields,
+        "golden_example": golden_example,
     })
     
     pure_function_source = extract_code_block(response.content, "python")
