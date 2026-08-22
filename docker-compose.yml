@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # 1. The Graph Database (For AST & Dependency Mapping)
+  neo4j:
+    image: neo4j:5.18.0
+    container_name: rosetta-neo4j
+    ports:
+      - "7474:7474"  # HTTP Browser UI (This is what you show the judges)
+      - "7687:7687"  # Bolt protocol (How your Python agents connect to it)
+    environment:
+      - NEO4J_AUTH=neo4j/rosetta_hackathon2026
+      # Enable APOC plugins for advanced graph algorithms if needed later
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+  # 2. The Legacy Database State (For Parity Testing)
+  postgres:
+    image: postgres:15-alpine
+    container_name: rosetta-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=ofbiz_user
+      - POSTGRES_PASSWORD=ofbiz_password
+      - POSTGRES_DB=ofbiz_legacy
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # Command to enable pg_stat_statements for capturing transaction logs
+    command: postgres -c shared_preload_libraries=pg_stat_statements -c pg_stat_statements.track=all
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  postgres_data:

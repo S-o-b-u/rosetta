@@ -1,0 +1,72 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+pytestdebug.log
+.tox/
+*.egg-info/
+dist/
+
+# JavaScript and frontend tooling
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.parcel-cache/
+.vite/
+dashboard/dist/
+dashboard/build/
+
+# Generated project output
+.gradle/
+**/build/
+**/out/
+**/target/
+*.class
+*.jar
+*.war
+*.log
+reports/
+test-results/
+
+# IDE and editor files
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Operating system files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temporary and patch files
+*.swp
+*.swo
+*~
+*.tmp
+*.temp
+*.patch

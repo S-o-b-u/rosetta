@@ -1,0 +1,34 @@
+{
+    "framework": "Spring Boot",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "annotation",
+                "value": "@Query"
+            },
+            {
+                "type": "method_name_regex",
+                "pattern": "^(find|get|read|query).*By"
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "repository",
+                "methods": [
+                    "save",
+                    "saveAll",
+                    "delete"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "annotation",
+                "value": "@Autowired"
+            }
+        ]
+    }
+}

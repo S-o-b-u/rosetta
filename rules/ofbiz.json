@@ -1,0 +1,40 @@
+{
+    "framework": "Apache OFBiz",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "method_chain",
+                "qualifier": "EntityQuery",
+                "methods": [
+                    "from",
+                    "where",
+                    "queryList",
+                    "queryFirst"
+                ]
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "delegator",
+                "methods": [
+                    "create",
+                    "store",
+                    "removeByAnd"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "dispatcher",
+                "methods": [
+                    "runSync",
+                    "runAsync"
+                ]
+            }
+        ]
+    }
+}
