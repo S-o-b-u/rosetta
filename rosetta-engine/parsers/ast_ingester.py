@@ -15,15 +15,15 @@ class GraphIngester:
     def close(self):
         self.driver.close()
 
-    def create_interaction(self, service_name, table_name, action):
+    def create_interaction(self, service_name, table_name, action, migration_id):
         """Creates a standardized Neo4j relationship: (Service)-[:INTERACTS_WITH]->(DatabaseTable)"""
         with self.driver.session() as session:
             query = """
-            MERGE (s:Service {name: $service_name})
+            MERGE (s:Service {name: $service_name, migration_id: $migration_id})
             MERGE (t:DatabaseTable {name: $table_name})
-            MERGE (s)-[:INTERACTS_WITH {action: $action}]->(t)
+            MERGE (s)-[:INTERACTS_WITH {action: $action, migration_id: $migration_id}]->(t)
             """
-            session.run(query, service_name=service_name, table_name=table_name, action=action)
+            session.run(query, service_name=service_name, table_name=table_name, action=action, migration_id=migration_id)
 
 def load_framework_rules(framework_name):
     # Safely navigate from core/ back out to the rules/ folder
@@ -36,7 +36,7 @@ def load_framework_rules(framework_name):
     with open(rule_path, "r") as f:
         return json.load(f)
 
-def process_java_file_to_neo4j(file_path, framework, target_method):
+def process_java_file_to_neo4j(file_path, framework, target_method, migration_id):
     print(f"[*] Loading dynamic AST mapping rules for: {framework.upper()}")
     rules = load_framework_rules(framework)
     
@@ -50,7 +50,7 @@ def process_java_file_to_neo4j(file_path, framework, target_method):
     # 2. Connect to Neo4j
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "password")
+    password = os.getenv("NEO4J_PASSWORD", "rosetta2026")
     
     ingester = GraphIngester(uri, user, password)
     
@@ -74,16 +74,108 @@ def process_java_file_to_neo4j(file_path, framework, target_method):
                             if invoc.arguments and isinstance(invoc.arguments[0], javalang.tree.Literal):
                                 table_name = invoc.arguments[0].value.strip('"')
                                 print(f"    -> [MAPPED READ] Table: {table_name}")
-                                ingester.create_interaction(target_method, table_name, "READ")
+                                ingester.create_interaction(target_method, table_name, "READ", migration_id)
                                 
                     # e.g., Matching Spring Boot @Query annotations
                     elif pattern["type"] == "annotation":
                         # Logic to check method annotations would go here for Spring Boot
                         pass
+                
+                # Check against dynamic WRITE patterns from our JSON
+                for pattern in rules["database"].get("write_patterns", []):
+                    if pattern["type"] == "method_call":
+                        if invoc.qualifier == pattern["qualifier"] and invoc.member in pattern["methods"]:
+                            # Extract the table name from the arguments
+                            if invoc.arguments and isinstance(invoc.arguments[0], javalang.tree.Literal):
+                                table_name = invoc.arguments[0].value.strip('"')
+                                print(f"    -> [MAPPED WRITE] Table: {table_name}")
+                                ingester.create_interaction(target_method, table_name, "WRITE", migration_id)
 
     ingester.close()
     print("[+] AST parsing and Neo4j graph injection complete.")
 
 # Test block for local execution
+def ingest_and_get_context(migration_id: str, file_path: str, target_method: str) -> dict:
+    """
+    Integration function for the Rosetta migration pipeline.
+    Ingests the Java file into Neo4j and returns the resulting graph subgraph.
+    """
+    # 1. Run the existing ingestion (hardcoding "ofbiz" as the framework for now)
+    process_java_file_to_neo4j(file_path, "ofbiz", target_method, migration_id)
+    
+    # 2. Query Neo4j to build the context dictionary
+    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
+    user = os.getenv("NEO4J_USER", "neo4j")
+    password = os.getenv("NEO4J_PASSWORD", "rosetta2026")
+    
+    nodes = []
+    edges = []
+    
+    driver = GraphDatabase.driver(uri, auth=(user, password))
+    with driver.session() as session:
+        # Note: Isolation implemented by scoping to migration_id
+        query = """
+        MATCH (s:Service {name: $method_name, migration_id: $migration_id})-[r]->(target)
+        RETURN s.name AS source_name, labels(s)[0] AS source_label,
+               type(r) AS rel_type, r.action AS action,
+               target.name AS target_name, labels(target)[0] AS target_label
+        """
+        results = session.run(query, method_name=target_method, migration_id=migration_id)
+        
+        nodes_set = set()
+        for record in results:
+            src = record["source_name"]
+            src_lbl = record["source_label"]
+            tgt = record["target_name"]
+            tgt_lbl = record["target_label"]
+            rel = record["rel_type"]
+            action = record["action"]
+            
+            if src not in nodes_set:
+                nodes.append({"id": src, "label": src_lbl})
+                nodes_set.add(src)
+            if tgt not in nodes_set:
+                nodes.append({"id": tgt, "label": tgt_lbl})
+                nodes_set.add(tgt)
+                
+            edges.append({
+                "source": src,
+                "target": tgt,
+                "label": rel,
+                "action": action
+            })
+            
+    driver.close()
+    
+    return {
+        "migration_id": migration_id,
+        "nodes": nodes,
+        "edges": edges
+    }
+
 if __name__ == "__main__":
-    pass
+    import pprint
+    # Test the integration function
+    migration_id_1 = "test-mig-1"
+    migration_id_2 = "test-mig-2"
+    file_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "Dummy.java"))
+    target_method = "getGrandTotal"
+    
+    if os.path.exists(file_path):
+        print(f"[*] Testing isolation for {target_method}...")
+        try:
+            ctx1 = ingest_and_get_context(migration_id_1, file_path, target_method)
+            ctx2 = ingest_and_get_context(migration_id_2, file_path, target_method)
+            print(f"[+] Mig 1 context size: {len(ctx1['nodes'])} nodes, {len(ctx1['edges'])} edges")
+            print(f"[+] Mig 2 context size: {len(ctx2['nodes'])} nodes, {len(ctx2['edges'])} edges")
+            
+            # Verify they are isolated
+            assert ctx1['migration_id'] == migration_id_1
+            assert ctx2['migration_id'] == migration_id_2
+            
+            print("[+] Integration test successful! Result 1:")
+            pprint.pprint(ctx1)
+        except Exception as e:
+            print(f"[-] Integration test failed: {e}")
+    else:
+        print(f"[-] Dummy file not found at {file_path}")

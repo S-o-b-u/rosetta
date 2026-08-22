@@ -1,12 +1,14 @@
-from typing import TypedDict, Dict, Any, Optional
+from typing import TypedDict, Dict, Any, Optional, NotRequired
 
 class RosettaState(TypedDict):
     # ==========================================
     # 1. INPUT & CONTEXT (Provided by CLI)
     # ==========================================
+    migration_id: str
     file_path: str
     target_method: str
     java_code: str
+    neo4j_context: NotRequired[Dict[str, Any]]
 
     # ==========================================
     # 2. AGENT OUTPUTS (Populated during pipeline)

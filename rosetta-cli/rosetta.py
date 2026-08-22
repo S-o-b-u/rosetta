@@ -383,7 +383,11 @@ def migrate(args):
 
     os.makedirs(args.output, exist_ok=True)
 
+    import uuid
+    migration_id = f"mig-{uuid.uuid4().hex[:8]}"
+
     initial_state = {
+        "migration_id":          migration_id,
         "file_path":             args.file,
         "target_method":         args.target,
         "java_code":             java_code,
