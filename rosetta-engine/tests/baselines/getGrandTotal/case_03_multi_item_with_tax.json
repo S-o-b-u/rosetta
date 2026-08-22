@@ -1,0 +1,32 @@
+{
+  "fixture_id": "case_03_multi_item_with_tax",
+  "description": "Three cart lines, one ship group with shipping and tax. No adjustments. This is the canonical 5-term exercise.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([120.00, 30.00, 50.00]) = 200.00",
+    "total_shipping":               "SUM([15.00]) = 15.00",
+    "total_sales_tax":              "SUM([14.00]) = 14.00",
+    "order_other_adjustment_total": "SUM([]) = 0.00",
+    "order_global_adjustments":     "SUM([]) = 0.00",
+    "grand_total":                  "200.00 + 15.00 + 14.00 + 0.00 + 0.00 = 229.00"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "120.00"},
+      {"item_sub_total": "30.00"},
+      {"item_sub_total": "50.00"}
+    ],
+    "ship_info": [
+      {"ship_estimate": "15.00", "total_tax": "14.00"}
+    ],
+    "adjustments": [],
+    "global_adjustments": []
+  },
+  "expected_output": {
+    "sub_total":                    "200.00",
+    "total_shipping":               "15.00",
+    "total_sales_tax":              "14.00",
+    "order_other_adjustment_total": "0.00",
+    "order_global_adjustments":     "0.00",
+    "grand_total":                  "229.00"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "fixture_id": "case_04_fixed_adjustment",
+  "description": "One cart line with a fixed negative adjustment (discount). Matches the canonical live-run failure fixture from the equivalence-testing-implementation-plan.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([120.00]) = 120.00",
+    "total_shipping":               "SUM([10.00]) = 10.00",
+    "total_sales_tax":              "SUM([8.40]) = 8.40",
+    "order_other_adjustment_total": "fixed amount = -10.00",
+    "order_global_adjustments":     "fixed amount (ship_group_seq_id is null) = 2.00",
+    "grand_total":                  "120.00 + 10.00 + 8.40 + (-10.00) + 2.00 = 130.40"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "120.00"}
+    ],
+    "ship_info": [
+      {"ship_estimate": "10.00", "total_tax": "8.40"}
+    ],
+    "adjustments": [
+      {"amount": "-10.00", "is_percent": false, "ship_group_seq_id": null}
+    ],
+    "global_adjustments": [
+      {"amount": "2.00", "is_percent": false, "ship_group_seq_id": null}
+    ]
+  },
+  "expected_output": {
+    "sub_total":                    "120.00",
+    "total_shipping":               "10.00",
+    "total_sales_tax":              "8.40",
+    "order_other_adjustment_total": "-10.00",
+    "order_global_adjustments":     "2.00",
+    "grand_total":                  "130.40"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "fixture_id": "case_02_single_item",
+  "description": "Single cart line, no shipping, no tax, no adjustments. Sub-total drives grand total.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([50.00]) = 50.00",
+    "total_shipping":               "SUM([]) = 0.00",
+    "total_sales_tax":              "SUM([]) = 0.00",
+    "order_other_adjustment_total": "SUM([]) = 0.00",
+    "order_global_adjustments":     "SUM([]) = 0.00",
+    "grand_total":                  "50.00 + 0.00 + 0.00 + 0.00 + 0.00 = 50.00"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "50.00"}
+    ],
+    "ship_info": [],
+    "adjustments": [],
+    "global_adjustments": []
+  },
+  "expected_output": {
+    "sub_total":                    "50.00",
+    "total_shipping":               "0.00",
+    "total_sales_tax":              "0.00",
+    "order_other_adjustment_total": "0.00",
+    "order_global_adjustments":     "0.00",
+    "grand_total":                  "50.00"
+  }
+}

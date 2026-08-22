@@ -1,0 +1,32 @@
+{
+  "fixture_id": "case_05_percentage_adjustment",
+  "description": "Percentage-based adjustment applied to sub_total only (is_percent=true, not global). The 10% adjustment on 200.00 = -20.00.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([200.00]) = 200.00",
+    "total_shipping":               "SUM([12.00]) = 12.00",
+    "total_sales_tax":              "SUM([16.00]) = 16.00",
+    "order_other_adjustment_total": "is_percent=true: (200.00 * -10.00) / 100 = -20.00",
+    "order_global_adjustments":     "SUM([]) = 0.00",
+    "grand_total":                  "200.00 + 12.00 + 16.00 + (-20.00) + 0.00 = 208.00"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "200.00"}
+    ],
+    "ship_info": [
+      {"ship_estimate": "12.00", "total_tax": "16.00"}
+    ],
+    "adjustments": [
+      {"amount": "-10.00", "is_percent": true, "ship_group_seq_id": null}
+    ],
+    "global_adjustments": []
+  },
+  "expected_output": {
+    "sub_total":                    "200.00",
+    "total_shipping":               "12.00",
+    "total_sales_tax":              "16.00",
+    "order_other_adjustment_total": "-20.00",
+    "order_global_adjustments":     "0.00",
+    "grand_total":                  "208.00"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "fixture_id": "case_07_ship_group_excluded",
+  "description": "Global adjustment with a real ship_group_seq_id ('GRP1') should be EXCLUDED from global adjustments. Verifies that the ship-group filter works correctly.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([150.00]) = 150.00",
+    "total_shipping":               "SUM([20.00]) = 20.00",
+    "total_sales_tax":              "SUM([10.50]) = 10.50",
+    "order_other_adjustment_total": "SUM([]) = 0.00",
+    "order_global_adjustments":     "ship_group_seq_id='GRP1' => excluded: 0.00",
+    "grand_total":                  "150.00 + 20.00 + 10.50 + 0.00 + 0.00 = 180.50"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "150.00"}
+    ],
+    "ship_info": [
+      {"ship_estimate": "20.00", "total_tax": "10.50"}
+    ],
+    "adjustments": [],
+    "global_adjustments": [
+      {"amount": "99.00", "is_percent": false, "ship_group_seq_id": "GRP1"}
+    ]
+  },
+  "expected_output": {
+    "sub_total":                    "150.00",
+    "total_shipping":               "20.00",
+    "total_sales_tax":              "10.50",
+    "order_other_adjustment_total": "0.00",
+    "order_global_adjustments":     "0.00",
+    "grand_total":                  "180.50"
+  }
+}

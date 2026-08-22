@@ -1,0 +1,32 @@
+{
+  "fixture_id": "case_06_global_adjustment_na",
+  "description": "Global adjustment with ship_group_seq_id='_NA_' should be included (treated the same as null). Verifies the _NA_ sentinel check.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([100.00]) = 100.00",
+    "total_shipping":               "SUM([8.00]) = 8.00",
+    "total_sales_tax":              "SUM([7.00]) = 7.00",
+    "order_other_adjustment_total": "SUM([]) = 0.00",
+    "order_global_adjustments":     "ship_group_seq_id='_NA_' => included: fixed 5.00",
+    "grand_total":                  "100.00 + 8.00 + 7.00 + 0.00 + 5.00 = 120.00"
+  },
+  "input": {
+    "cart_lines": [
+      {"item_sub_total": "100.00"}
+    ],
+    "ship_info": [
+      {"ship_estimate": "8.00", "total_tax": "7.00"}
+    ],
+    "adjustments": [],
+    "global_adjustments": [
+      {"amount": "5.00", "is_percent": false, "ship_group_seq_id": "_NA_"}
+    ]
+  },
+  "expected_output": {
+    "sub_total":                    "100.00",
+    "total_shipping":               "8.00",
+    "total_sales_tax":              "7.00",
+    "order_other_adjustment_total": "0.00",
+    "order_global_adjustments":     "5.00",
+    "grand_total":                  "120.00"
+  }
+}

@@ -44,13 +44,16 @@ def run_architecture_agent(state: AgentState) -> AgentState:
     # Create the Prompt
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an elite Backend Technical Architect specializing in scalable distributed systems.
-        Your task is to transform a JSON payload containing extracted legacy business rules into a modern microservice.
+        Your task is to transform a JSON payload containing extracted legacy business rules into a modern microservice component.
         
-        Requirements:
-        1. Generate asynchronous FastAPI code.
-        2. Use SQLAlchemy for database interactions (mapping the legacy tables to modern ORM models).
-        3. Structure the code cleanly with Pydantic schemas for request/response validation.
-        4. Generate a complete, valid OpenAPI v3 YAML specification for the service.
+        CRITICAL ARCHITECTURE CONSTRAINTS:
+        1. Do NOT create a standalone `app = FastAPI()` instance.
+        2. You MUST use `APIRouter()` from fastapi. 
+        3. Initialize the router exactly like this: `router = APIRouter(tags=["Generated Service"])`
+        4. Attach your endpoints to this `router` (e.g., `@router.post("/api/v1/...")`).
+        5. Include all required asynchronous SQLAlchemy models (`asyncpg`) and Pydantic schemas in the same file.
+        6. Do NOT include `uvicorn.run()` or an `if __name__ == "__main__":` block.
+        7. Generate a complete, valid OpenAPI v3 YAML specification for the service.
         
         Focus on performance, clean architecture, and exact parity with the provided business rules.
         Return the exact Python code and YAML string."""),

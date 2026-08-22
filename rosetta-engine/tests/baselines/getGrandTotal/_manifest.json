@@ -1,0 +1,25 @@
+{
+  "method": "getGrandTotal",
+  "source_class": "org.apache.ofbiz.order.shoppingcart.ShoppingCart",
+  "formula": "getSubTotal() + getTotalShipping() + getTotalSalesTax() + getOrderOtherAdjustmentTotal() + getOrderGlobalAdjustments()",
+  "capture_mode": "hand_authored",
+  "capture_date": "2026-08-22",
+  "author": "Rosetta Team",
+  "notes": "Golden outputs are derived from the public ShoppingCart.java arithmetic, which is pure summation with no delegator dependency. Values are independently verifiable by reading the source. T5 (java_executed via full OFBiz delegator) is intentionally out of scope for this baseline set.",
+  "formula_terms": [
+    {"name": "sub_total",                    "source_method": "getSubTotal",                 "required": true},
+    {"name": "total_shipping",               "source_method": "getTotalShipping",             "required": true},
+    {"name": "total_sales_tax",              "source_method": "getTotalSalesTax",             "required": true},
+    {"name": "order_other_adjustment_total", "source_method": "getOrderOtherAdjustmentTotal", "required": true},
+    {"name": "order_global_adjustments",     "source_method": "getOrderGlobalAdjustments",    "required": true}
+  ],
+  "cases": [
+    "case_01_empty_cart",
+    "case_02_single_item",
+    "case_03_multi_item_with_tax",
+    "case_04_fixed_adjustment",
+    "case_05_percentage_adjustment",
+    "case_06_global_adjustment_na",
+    "case_07_ship_group_excluded"
+  ]
+}

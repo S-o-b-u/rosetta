@@ -104,8 +104,15 @@ File: [rosetta-engine/core/state.py](rosetta-engine/core/state.py)
 | `logic_json` | Discovery output serialized as JSON text. |
 | `generated_python` | Architecture output containing the FastAPI router. |
 | `openapi_spec` | Reserved state field for an OpenAPI result; not populated by the active Architecture node. |
-| `test_payload` | Discovery-generated request fixture. |
+| `candidate_source` | Generated Python source executed by the validator before artifact writing. |
+| `candidate_route` | Optional route contract used to select the endpoint under test. |
+| `candidate_method` | HTTP method used by the validator, defaulting to `POST`. |
+| `test_payload` | Backward-compatible primary request fixture. |
 | `expected_legacy_output` | Discovery-generated baseline response. |
+| `test_cases` | Canonical parity cases evaluated by the validator. |
+| `baseline_mode` | Baseline authority: `provisional`, `approved`, or `java_executed`. |
+| `baseline_command` | External adapter command used for Java-executed baselines. |
+| `validation_results` | Per-case normalized outputs and differences. |
 | `validation_passed` | Shadow-test result. |
 | `validation_feedback` | Failure detail sent to a retrying Architecture step. |
 | `retry_count` | Bounded retry counter. |
@@ -144,20 +151,27 @@ The active node does not create or populate `openapi_spec`, despite that field e
 
 ### 3.5 Shadow validator
 
-File: [rosetta-engine/core/graph.py](rosetta-engine/core/graph.py)
+File: [rosetta-engine/core/validator.py](rosetta-engine/core/validator.py)
 
 The validator provides the prototype's parity mechanism:
 
-1. Builds a module name from `<target_method>_service`.
-2. Looks for that file under the fixed path `./modern-invoices/`.
-3. Dynamically imports the generated module.
-4. Creates an in-memory FastAPI application and includes the module's `router`.
-5. Uses FastAPI `TestClient` to invoke the first discovered router path.
-6. Tries `POST` first and retries as `GET` if the endpoint returns `405`.
-7. Compares the response JSON with Discovery's expected output.
-8. Returns success or sends a mismatch/exception message back to Architecture.
+1. Reads the generated source from `candidate_source`/`generated_python` in state.
+2. Compiles it into an isolated in-memory module.
+3. Creates an in-memory FastAPI application and includes the module's `router`.
+4. Selects `candidate_route`; if none is supplied, it allows only a single generated route.
+5. Sends the explicit `candidate_method` request through FastAPI `TestClient`.
+6. Normalizes key naming and monetary transport representations before comparison.
+7. Runs every canonical case and returns structured field-level mismatch feedback to Architecture.
 
-The validator prints a side-by-side report containing the input, expected Java baseline, and actual Python response. It performs exact JSON equality, so differences in field names, numeric representation, or omitted fields fail validation.
+Baseline authority is controlled by `baseline_mode`:
+
+- `provisional`: use the expected output returned by Discovery; development-only.
+- `approved`: use a reviewed expected output stored with the case; suitable for a controlled demo.
+- `java_executed`: invoke `baseline_command` for every case and use the actual legacy adapter response; required for true parity certification.
+
+The external adapter protocol is documented in [rosetta-engine/baselines/README.md](rosetta-engine/baselines/README.md).
+
+The validator prints a side-by-side report containing the input, expected Java baseline, and actual Python response. Comparison logic lives in [rosetta-engine/core/equivalence.py](rosetta-engine/core/equivalence.py): representation-only differences such as camelCase versus snake_case or `130.4` versus `"130.40"` are accepted, while missing fields and real monetary differences remain failures.
 
 ### 3.6 Generated service host
 
@@ -329,7 +343,7 @@ Environment variables are expected for the Gemini API key and, when graph featur
 | Gemini Discovery extraction | Implemented | `rosetta-engine/core/agents.py` |
 | Gemini FastAPI generation | Implemented | `rosetta-engine/core/agents.py` |
 | Dynamic router loading | Implemented | `modern-invoices/main.py` |
-| Shadow equivalence validation | Implemented as prototype | `rosetta-engine/core/graph.py` |
+| Shadow equivalence validation | Implemented with in-memory candidate execution and multi-case comparison | `rosetta-engine/core/validator.py` |
 | Bounded Architecture retry loop | Implemented | `rosetta-engine/core/graph.py` |
 | Invoice total service artifact | Implemented example | `modern-invoices/getGrandTotal_service.py` |
 | OpenAPI generation in active path | Not wired | State field exists; active node does not set it |
@@ -340,24 +354,22 @@ Environment variables are expected for the Gemini API key and, when graph featur
 | Deterministic automated tests | Limited | Existing tests call live agents and are not isolated |
 | Dashboard application | Data artifact only | `dashboard/data/roadmap_graph.json` |
 | Legacy gateway backend | Mocked | `gateway.py` returns synthetic responses |
+| OFBiz Java baseline adapter | Implemented, awaiting JDK compile/runtime verification | `ofbiz-framework/applications/order/src/test/java/org/apache/ofbiz/order/rosetta/RosettaBaselineAdapter.java` |
 
 ## 10. Known Gaps and Risks
 
-1. **Artifact path coupling:** The validator always searches `./modern-invoices/<target>_service.py`, even when the CLI output directory is different. A non-default `--output` can therefore fail validation or validate stale code.
-2. **Generation happens before disk write:** The validator expects the generated service file to exist on disk, but the CLI writes `generated_python` only after the pipeline returns successfully. This makes the active migration flow dependent on a pre-existing artifact and prevents a clean first-run validation.
+1. **Baseline provenance:** Default mode uses a Discovery-generated provisional response. The OFBiz adapter is now implemented, but it still needs to be compiled and exercised on a machine with a configured JDK and initialized OFBiz delegator.
+2. **Route fallback:** A single-route candidate can still be inferred when no route contract is supplied; multi-route candidates are rejected until an explicit route is provided.
 3. **OpenAPI state is unused:** `openapi_spec` is declared but never returned by the active Architecture node or written by the CLI.
 4. **Discovery is not AST- or graph-grounded:** The active Discovery node receives the full Java file but does not receive the parser output or Neo4j context.
-5. **Validation baseline is LLM-generated:** The expected legacy response is generated by the same Discovery call that informs the modern implementation. It is useful for demonstration, but it is not an independent execution of the Java service.
-6. **Endpoint discovery is broad:** The validator tests the first route in the router rather than selecting a known contract or target operation.
-7. **Exact JSON comparison is strict:** Decimal serialization, aliases, optional fields, and harmless response-shape differences can cause false mismatches.
-8. **Framework rules are disconnected:** Five rule files exist, but the active migration workflow is Java-input-only and does not select or apply them.
-9. **Neo4j credentials differ by component:** Compose and AST-ingester defaults do not match.
-10. **Dependencies are undocumented for installation:** A new environment cannot reliably install the required runtime from the repository.
-11. **Existing tests are live integration scripts:** They require model credentials and Neo4j availability, and they do not assert stable behavior with mocks.
+5. **Framework rules are disconnected:** Five rule files exist, but the active migration workflow is Java-input-only and does not select or apply them.
+6. **Neo4j credentials differ by component:** Compose and AST-ingester defaults do not match.
+7. **Dependencies are undocumented for installation:** A new environment cannot reliably install the required runtime from the repository.
+8. **Existing tests are live integration scripts:** They require model credentials and Neo4j availability, and they do not assert stable behavior with mocks.
 
 ## 11. Recommended Next Implementation Steps
 
-1. Pass the output directory and generated source into validation, or write a temporary candidate file before invoking the validator; remove the fixed `./modern-invoices` assumption.
+1. Supply and validate a real OFBiz Java adapter in `java_executed` mode; provisional mode is for development only.
 2. Return `openapi_spec` from the active Architecture node and write `<target>_openapi.yaml` alongside the other artifacts.
 3. Call `process_java_file_to_neo4j` from an explicit preparation phase and pass the resulting graph context into Discovery.
 4. Reconcile the two agent implementations by either retiring `rosetta-engine/agents/` or making it a tested alternative rather than an ambiguous second pipeline.

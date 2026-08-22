@@ -1,0 +1,26 @@
+{
+  "fixture_id": "case_01_empty_cart",
+  "description": "Empty cart: all lists empty. Every term is zero. Grand total is zero.",
+  "arithmetic_trace": {
+    "sub_total":                    "SUM([]) = 0.00",
+    "total_shipping":               "SUM([]) = 0.00",
+    "total_sales_tax":              "SUM([]) = 0.00",
+    "order_other_adjustment_total": "SUM([]) = 0.00",
+    "order_global_adjustments":     "SUM([]) = 0.00",
+    "grand_total":                  "0.00 + 0.00 + 0.00 + 0.00 + 0.00 = 0.00"
+  },
+  "input": {
+    "cart_lines": [],
+    "ship_info": [],
+    "adjustments": [],
+    "global_adjustments": []
+  },
+  "expected_output": {
+    "sub_total":                    "0.00",
+    "total_shipping":               "0.00",
+    "total_sales_tax":              "0.00",
+    "order_other_adjustment_total": "0.00",
+    "order_global_adjustments":     "0.00",
+    "grand_total":                  "0.00"
+  }
+}

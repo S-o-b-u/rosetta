@@ -1,40 +1,41 @@
 {
-  "service_name": "getGrandTotal",
-  "trigger": "Checkout flow execution, shopping cart total recalculation, or order review",
-  "inputs": [
-    {
-      "name": "orderId",
-      "type": "String",
-      "required": false
+  "method_name": "getGrandTotal",
+  "business_purpose": "Calculate the final total cost of the shopping cart including line item totals, shipping costs, sales tax, and applicable order adjustments.",
+  "mathematical_formula": "GrandTotal = SubTotal + TotalShipping + TotalSalesTax + OrderOtherAdjustmentTotal + OrderGlobalAdjustments",
+  "components": {
+    "sub_total": {
+      "description": "Sum of subtotals for all individual line items in the cart.",
+      "operation": "SUM(cartLines.itemSubTotal)"
     },
-    {
-      "name": "shoppingCart",
-      "type": "ShoppingCart",
-      "required": false
+    "total_shipping": {
+      "description": "Sum of shipping estimates across all ship groups.",
+      "operation": "SUM(shipInfo.shipEstimate)"
+    },
+    "total_sales_tax": {
+      "description": "Sum of sales tax calculated for each ship group.",
+      "operation": "SUM(shipInfo.totalTax)"
+    },
+    "order_other_adjustment_total": {
+      "description": "Calculated total of non-shipping and non-tax order-level adjustments applied to the cart subtotal.",
+      "operation": "CALCULATE_ADJUSTMENTS(adjustments, subTotal, includeSubTotalRules=true, includeTax=false, includeShipping=false)"
+    },
+    "order_global_adjustments": {
+      "description": "Calculated total of global order adjustments that are not tied to a specific ship group (or shipGroupSeqId is '_NA_').",
+      "operation": "CALCULATE_ADJUSTMENTS(globalAdjustments, subTotal, includeSubTotalRules=false, includeTax=true, includeShipping=true)"
     }
-  ],
-  "database_interactions": [
+  },
+  "database_targets": [
     {
-      "table": "OrderHeader",
-      "action": "READ",
-      "condition": "Retrieve order details when calculating totals for an existing order"
+      "entity": "OrderAdjustment",
+      "purpose": "Source of global and line-item level adjustments, taxes, and shipping charges."
     },
     {
-      "table": "OrderItem",
-      "action": "READ",
-      "condition": "Retrieve line items to sum up unit prices and quantities"
+      "entity": "OrderItem",
+      "purpose": "Source of line-item base pricing and quantities used in subtotal calculation."
     },
     {
-      "table": "OrderAdjustment",
-      "action": "READ",
-      "condition": "Retrieve tax, shipping, and discount adjustments associated with the order"
+      "entity": "OrderItemShipGroup",
+      "purpose": "Source of ship-group level shipping estimates and associated tax adjustments."
     }
-  ],
-  "business_rules_sequence": [
-    "Calculate subtotal by summing line item amounts (quantity multiplied by unit price).",
-    "Retrieve and apply item-level and order-level promotional discounts.",
-    "Calculate total sales tax applicable to taxable items and shipping.",
-    "Calculate shipping charges and handling fees.",
-    "Sum subtotal, shipping fees, and taxes, then subtract discounts to determine the final grand total."
   ]
 }
