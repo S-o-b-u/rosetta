@@ -1,0 +1,40 @@
+{
+  "service_name": "getGrandTotal",
+  "trigger": "Checkout flow execution, shopping cart total recalculation, or order review",
+  "inputs": [
+    {
+      "name": "orderId",
+      "type": "String",
+      "required": false
+    },
+    {
+      "name": "shoppingCart",
+      "type": "ShoppingCart",
+      "required": false
+    }
+  ],
+  "database_interactions": [
+    {
+      "table": "OrderHeader",
+      "action": "READ",
+      "condition": "Retrieve order details when calculating totals for an existing order"
+    },
+    {
+      "table": "OrderItem",
+      "action": "READ",
+      "condition": "Retrieve line items to sum up unit prices and quantities"
+    },
+    {
+      "table": "OrderAdjustment",
+      "action": "READ",
+      "condition": "Retrieve tax, shipping, and discount adjustments associated with the order"
+    }
+  ],
+  "business_rules_sequence": [
+    "Calculate subtotal by summing line item amounts (quantity multiplied by unit price).",
+    "Retrieve and apply item-level and order-level promotional discounts.",
+    "Calculate total sales tax applicable to taxable items and shipping.",
+    "Calculate shipping charges and handling fees.",
+    "Sum subtotal, shipping fees, and taxes, then subtract discounts to determine the final grand total."
+  ]
+}

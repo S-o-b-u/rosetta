@@ -1,0 +1,44 @@
+{
+    "framework": "Django",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "method_chain",
+                "qualifier": "objects",
+                "methods": [
+                    "get",
+                    "filter",
+                    "all",
+                    "exclude"
+                ]
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "model_instance",
+                "methods": [
+                    "save",
+                    "delete",
+                    "update"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "decorator",
+                "value": "@shared_task"
+            },
+            {
+                "type": "method_call",
+                "qualifier": "celery",
+                "methods": [
+                    "delay",
+                    "apply_async"
+                ]
+            }
+        ]
+    }
+}

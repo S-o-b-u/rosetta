@@ -1,0 +1,39 @@
+{
+    "framework": "Java EE (Hibernate/JPA)",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "entityManager",
+                "methods": [
+                    "find",
+                    "createQuery",
+                    "createNamedQuery"
+                ]
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "entityManager",
+                "methods": [
+                    "persist",
+                    "merge",
+                    "remove"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "annotation",
+                "value": "@Inject"
+            },
+            {
+                "type": "annotation",
+                "value": "@EJB"
+            }
+        ]
+    }
+}

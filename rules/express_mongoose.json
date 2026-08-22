@@ -1,0 +1,47 @@
+{
+    "framework": "Express.js (Mongoose)",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "Model",
+                "methods": [
+                    "find",
+                    "findOne",
+                    "findById"
+                ]
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "Model",
+                "methods": [
+                    "save",
+                    "create",
+                    "updateOne",
+                    "deleteOne"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "axios",
+                "methods": [
+                    "post",
+                    "get"
+                ]
+            },
+            {
+                "type": "method_call",
+                "qualifier": "fetch",
+                "methods": [
+                    ""
+                ]
+            }
+        ]
+    }
+}

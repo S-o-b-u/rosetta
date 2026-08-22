@@ -1,0 +1,115 @@
+openapi: 3.0.3
+info:
+  title: Grand Total Calculation Service
+  version: 1.0.0
+  description: Microservice to calculate order and shopping cart grand totals based on items, discounts, taxes, and shipping fees.
+paths:
+  /api/v1/get-grand-total:
+    post:
+      summary: Calculate Grand Total
+      operationId: getGrandTotal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GetGrandTotalRequest'
+      responses:
+        '200':
+          description: Successful calculation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GrandTotalResponse'
+        '400':
+          description: Invalid request parameters
+        '404':
+          description: Order not found
+components:
+  schemas:
+    GetGrandTotalRequest:
+      type: object
+      properties:
+        order_id:
+          type: string
+          nullable: true
+          example: "ORD12345"
+        shopping_cart:
+          $ref: '#/components/schemas/ShoppingCartInput'
+    ShoppingCartInput:
+      type: object
+      properties:
+        cart_id:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItemInput'
+        discount_amount:
+          type: number
+          format: double
+          default: 0.00
+        shipping_amount:
+          type: number
+          format: double
+          default: 0.00
+        handling_amount:
+          type: number
+          format: double
+          default: 0.00
+        tax_rate:
+          type: number
+          format: double
+          default: 0.00
+    CartItemInput:
+      type: object
+      required:
+        - item_id
+        - quantity
+        - unit_price
+      properties:
+        item_id:
+          type: string
+        quantity:
+          type: number
+          format: double
+          minimum: 0.01
+        unit_price:
+          type: number
+          format: double
+          minimum: 0.00
+        is_taxable:
+          type: boolean
+          default: true
+    GrandTotalResponse:
+      type: object
+      required:
+        - subtotal
+        - discounts
+        - tax
+        - shipping
+        - handling
+        - grand_total
+      properties:
+        order_id:
+          type: string
+          nullable: true
+        subtotal:
+          type: number
+          format: double
+        discounts:
+          type: number
+          format: double
+        tax:
+          type: number
+          format: double
+        shipping:
+          type: number
+          format: double
+        handling:
+          type: number
+          format: double
+        grand_total:
+          type: number
+          format: double
