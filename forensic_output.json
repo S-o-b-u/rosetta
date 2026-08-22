@@ -1,0 +1,247 @@
+{
+  "attempts": [
+    {
+      "generated_python": "from decimal import Decimal, ROUND_HALF_UP\nfrom typing import Any, Dict, List\n\n\ndef calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, str]:\n    \"\"\"\n    Compute order monetary components and the grand total.\n\n    Expected output keys (all present as strings with two decimal places):\n        sub_total\n        total_shipping\n        total_sales_tax\n        order_other_adjustment_total\n        order_global_adjustments\n        grand_total\n    \"\"\"\n\n    def to_decimal(value: Any) -> Decimal:\n        \"\"\"Convert a value to Decimal safely.\"\"\"\n        if isinstance(value, Decimal):\n            return value\n        # Preserve exact string representation for floats/ints\n        return Decimal(str(value)) if value is not None else Decimal(\"0\")\n\n    # ---------- Sub\u2011total ----------\n    if \"cart_lines\" in request and isinstance(request[\"cart_lines\"], list):\n        sub_total = sum(\n            (to_decimal(line.get(\"item_sub_total\", \"0\")) for line in request[\"cart_lines\"]),\n            Decimal(\"0\"),\n        )\n    else:\n        sub_total = to_decimal(request.get(\"sub_total\", \"0\"))\n\n    # ---------- Shipping ----------\n    if \"ship_info\" in request and isinstance(request[\"ship_info\"], list):\n        total_shipping = sum(\n            (to_decimal(info.get(\"ship_estimate\", \"0\")) for info in request[\"ship_info\"]),\n            Decimal(\"0\"),\n        )\n    else:\n        total_shipping = to_decimal(request.get(\"total_shipping\", \"0\"))\n\n    # ---------- Sales Tax ----------\n    if \"ship_info\" in request and isinstance(request[\"ship_info\"], list):\n        total_sales_tax = sum(\n            (to_decimal(info.get(\"total_tax\", \"0\")) for info in request[\"ship_info\"]),\n            Decimal(\"0\"),\n        )\n    else:\n        total_sales_tax = to_decimal(request.get(\"total_sales_tax\", \"0\"))\n\n    # ---------- Other Adjustments ----------\n    if \"adjustments\" in request and isinstance(request[\"adjustments\"], list):\n        other_adj_total = Decimal(\"0\")\n        for adj in request[\"adjustments\"]:\n            amount = to_decimal(adj.get(\"amount\", \"0\"))\n            if adj.get(\"is_percent\"):\n                # percentage of sub_total\n                amount = (sub_total * amount) / Decimal(\"100\")\n            other_adj_total += amount\n        order_other_adjustment_total = other_adj_total\n    else:\n        order_other_adjustment_total = to_decimal(\n            request.get(\"order_other_adjustment_total\", \"0\")\n        )\n\n    # ---------- Global Adjustments ----------\n    if \"global_adjustments\" in request and isinstance(request[\"global_adjustments\"], list):\n        global_adj_total = Decimal(\"0\")\n        for adj in request[\"global_adjustments\"]:\n            ship_group_seq_id = adj.get(\"ship_group_seq_id\")\n            # Include only if None or exactly \"_NA_\"\n            if ship_group_seq_id is not None and ship_group_seq_id != \"_NA_\":\n                continue\n            amount = to_decimal(adj.get(\"amount\", \"0\"))\n            if adj.get(\"is_percent\"):\n                amount = (sub_total * amount) / Decimal(\"100\")\n            global_adj_total += amount\n        order_global_adjustments = global_adj_total\n    else:\n        order_global_adjustments = to_decimal(\n            request.get(\"order_global_adjustments\", \"0\")\n        )\n\n    # ---------- Grand Total ----------\n    grand_total = (\n        sub_total\n        + total_shipping\n        + total_sales_tax\n        + order_other_adjustment_total\n        + order_global_adjustments\n    )\n\n    # Helper to format Decimal with two decimal places, preserving trailing zeros\n    def fmt(value: Decimal) -> str:\n        return str(value.quantize(Decimal(\"0.00\"), rounding=ROUND_HALF_UP))\n\n    return {\n        \"sub_total\": fmt(sub_total),\n        \"total_shipping\": fmt(total_shipping),\n        \"total_sales_tax\": fmt(total_sales_tax),\n        \"order_other_adjustment_total\": fmt(order_other_adjustment_total),\n        \"order_global_adjustments\": fmt(order_global_adjustments),\n        \"grand_total\": fmt(grand_total),\n    }",
+      "validation_feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+      "validation_results": [
+        {
+          "name": "baseline",
+          "baseline_mode": "provisional",
+          "passed": false,
+          "expected_normalized": {
+            "grand_total": "117.50"
+          },
+          "actual_normalized": {
+            "sub_total": "100.00",
+            "total_shipping": "10.00",
+            "total_sales_tax": "5.00",
+            "order_other_adjustment_total": "2.00",
+            "order_global_adjustments": "0.50",
+            "grand_total": "117.50"
+          },
+          "differences": [
+            "$.order_global_adjustments: unexpected value Decimal('0.50')",
+            "$.order_other_adjustment_total: unexpected value Decimal('2.00')",
+            "$.sub_total: unexpected value Decimal('100.00')",
+            "$.total_sales_tax: unexpected value Decimal('5.00')",
+            "$.total_shipping: unexpected value Decimal('10.00')"
+          ],
+          "input": {
+            "sub_total": 100.0,
+            "total_shipping": 10.0,
+            "total_sales_tax": 5.0,
+            "order_other_adjustment_total": 2.0,
+            "order_global_adjustments": 0.5
+          }
+        }
+      ],
+      "parity_report": {
+        "method": "getGrandTotal",
+        "baseline_mode": "provisional",
+        "overall_passed": false,
+        "tiers_passed": 1,
+        "tiers_total": 2,
+        "summary": "\u274c FAIL [getGrandTotal]  1/2 tiers passed  (baseline: provisional)",
+        "tiers": [
+          {
+            "tier": "T1_formula_completeness",
+            "passed": true,
+            "feedback": "T1 Formula Completeness: PASS",
+            "details": {
+              "tier": "T1_formula_completeness",
+              "passed": true,
+              "missing_terms": [],
+              "extra_terms": [
+                "grand_total"
+              ],
+              "checked_terms": [
+                "sub_total",
+                "total_shipping",
+                "total_sales_tax",
+                "order_other_adjustment_total",
+                "order_global_adjustments"
+              ]
+            },
+            "status": null
+          },
+          {
+            "tier": "T3_golden_file_equivalence",
+            "passed": true,
+            "feedback": "T3 skipped: baseline_mode is 'provisional', not 'golden_file'",
+            "details": {},
+            "status": "not_applicable"
+          },
+          {
+            "tier": "shadow_validation",
+            "passed": false,
+            "feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+            "details": {},
+            "status": null
+          }
+        ]
+      }
+    },
+    {
+      "generated_python": "from decimal import Decimal, getcontext, ROUND_HALF_UP\nfrom typing import Any, Dict, List, Union\n\n# Ensure enough precision for monetary calculations\ngetcontext().prec = 28\n\n\ndef _to_decimal(value: Union[str, int, float, Decimal]) -> Decimal:\n    \"\"\"Convert a numeric input to Decimal safely.\"\"\"\n    if isinstance(value, Decimal):\n        return value\n    return Decimal(str(value))\n\n\ndef calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, str]:\n    \"\"\"\n    Compute order monetary components and the grand total.\n\n    The function accepts a flexible payload that may contain either the\n    pre\u2011calculated component fields or the raw data structures from which\n    those components are derived.\n\n    Returned values are strings formatted with two decimal places.\n    \"\"\"\n    # ------------------------------------------------------------------\n    # 1. Sub\u2011total\n    # ------------------------------------------------------------------\n    if \"sub_total\" in request:\n        sub_total = _to_decimal(request[\"sub_total\"])\n    else:\n        cart_lines: List[Dict[str, Any]] = request.get(\"cart_lines\", [])\n        sub_total = sum(\n            (_to_decimal(line.get(\"item_sub_total\", 0)) for line in cart_lines),\n            start=Decimal(\"0\"),\n        )\n\n    # ------------------------------------------------------------------\n    # 2. Total shipping\n    # ------------------------------------------------------------------\n    if \"total_shipping\" in request:\n        total_shipping = _to_decimal(request[\"total_shipping\"])\n    else:\n        ship_info: List[Dict[str, Any]] = request.get(\"ship_info\", [])\n        total_shipping = sum(\n            (_to_decimal(info.get(\"ship_estimate\", 0)) for info in ship_info),\n            start=Decimal(\"0\"),\n        )\n\n    # ------------------------------------------------------------------\n    # 3. Total sales tax\n    # ------------------------------------------------------------------\n    if \"total_sales_tax\" in request:\n        total_sales_tax = _to_decimal(request[\"total_sales_tax\"])\n    else:\n        ship_info = request.get(\"ship_info\", [])\n        total_sales_tax = sum(\n            (_to_decimal(info.get(\"total_tax\", 0)) for info in ship_info),\n            start=Decimal(\"0\"),\n        )\n\n    # ------------------------------------------------------------------\n    # 4. Order other adjustments\n    # ------------------------------------------------------------------\n    if \"order_other_adjustment_total\" in request:\n        order_other_adjustment_total = _to_decimal(\n            request[\"order_other_adjustment_total\"]\n        )\n    else:\n        adjustments: List[Dict[str, Any]] = request.get(\"adjustments\", [])\n        other_adj_total = Decimal(\"0\")\n        for adj in adjustments:\n            amount = _to_decimal(adj.get(\"amount\", 0))\n            is_percent = adj.get(\"is_percent\", False)\n            if is_percent:\n                # Percentage is applied to the sub_total\n                amount = (sub_total * amount) / Decimal(\"100\")\n            other_adj_total += amount\n        order_other_adjustment_total = other_adj_total\n\n    # ------------------------------------------------------------------\n    # 5. Order global adjustments\n    # ------------------------------------------------------------------\n    if \"order_global_adjustments\" in request:\n        order_global_adjustments = _to_decimal(request[\"order_global_adjustments\"])\n    else:\n        global_adjustments: List[Dict[str, Any]] = request.get(\n            \"global_adjustments\", []\n        )\n        global_adj_total = Decimal(\"0\")\n        for gadj in global_adjustments:\n            ship_group_seq_id = gadj.get(\"ship_group_seq_id\")\n            # Include only when ship_group_seq_id is None or exactly \"_NA_\"\n            if ship_group_seq_id is not None and ship_group_seq_id != \"_NA_\":\n                continue\n            amount = _to_decimal(gadj.get(\"amount\", 0))\n            is_percent = gadj.get(\"is_percent\", False)\n            if is_percent:\n                amount = (sub_total * amount) / Decimal(\"100\")\n            global_adj_total += amount\n        order_global_adjustments = global_adj_total\n\n    # ------------------------------------------------------------------\n    # 6. Grand total\n    # ------------------------------------------------------------------\n    grand_total = (\n        sub_total\n        + total_shipping\n        + total_sales_tax\n        + order_other_adjustment_total\n        + order_global_adjustments\n    )\n\n    # Helper to format Decimal as string with two decimal places\n    def fmt(value: Decimal) -> str:\n        return str(value.quantize(Decimal(\"0.00\"), rounding=ROUND_HALF_UP))\n\n    return {\n        \"sub_total\": fmt(sub_total),\n        \"total_shipping\": fmt(total_shipping),\n        \"total_sales_tax\": fmt(total_sales_tax),\n        \"order_other_adjustment_total\": fmt(order_other_adjustment_total),\n        \"order_global_adjustments\": fmt(order_global_adjustments),\n        \"grand_total\": fmt(grand_total),\n    }",
+      "validation_feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+      "validation_results": [
+        {
+          "name": "baseline",
+          "baseline_mode": "provisional",
+          "passed": false,
+          "expected_normalized": {
+            "grand_total": "117.50"
+          },
+          "actual_normalized": {
+            "sub_total": "100.00",
+            "total_shipping": "10.00",
+            "total_sales_tax": "5.00",
+            "order_other_adjustment_total": "2.00",
+            "order_global_adjustments": "0.50",
+            "grand_total": "117.50"
+          },
+          "differences": [
+            "$.order_global_adjustments: unexpected value Decimal('0.50')",
+            "$.order_other_adjustment_total: unexpected value Decimal('2.00')",
+            "$.sub_total: unexpected value Decimal('100.00')",
+            "$.total_sales_tax: unexpected value Decimal('5.00')",
+            "$.total_shipping: unexpected value Decimal('10.00')"
+          ],
+          "input": {
+            "sub_total": 100.0,
+            "total_shipping": 10.0,
+            "total_sales_tax": 5.0,
+            "order_other_adjustment_total": 2.0,
+            "order_global_adjustments": 0.5
+          }
+        }
+      ],
+      "parity_report": {
+        "method": "getGrandTotal",
+        "baseline_mode": "provisional",
+        "overall_passed": false,
+        "tiers_passed": 1,
+        "tiers_total": 2,
+        "summary": "\u274c FAIL [getGrandTotal]  1/2 tiers passed  (baseline: provisional)",
+        "tiers": [
+          {
+            "tier": "T1_formula_completeness",
+            "passed": true,
+            "feedback": "T1 Formula Completeness: PASS",
+            "details": {
+              "tier": "T1_formula_completeness",
+              "passed": true,
+              "missing_terms": [],
+              "extra_terms": [
+                "grand_total"
+              ],
+              "checked_terms": [
+                "sub_total",
+                "total_shipping",
+                "total_sales_tax",
+                "order_other_adjustment_total",
+                "order_global_adjustments"
+              ]
+            },
+            "status": null
+          },
+          {
+            "tier": "T3_golden_file_equivalence",
+            "passed": true,
+            "feedback": "T3 skipped: baseline_mode is 'provisional', not 'golden_file'",
+            "details": {},
+            "status": "not_applicable"
+          },
+          {
+            "tier": "shadow_validation",
+            "passed": false,
+            "feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+            "details": {},
+            "status": null
+          }
+        ]
+      }
+    },
+    {
+      "generated_python": "from decimal import Decimal, ROUND_HALF_UP\nfrom typing import Any, Dict, List\n\n\ndef calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, str]:\n    \"\"\"\n    Compute order monetary components and the grand total.\n\n    Expected output keys (all present as strings with two decimal places):\n        - sub_total\n        - total_shipping\n        - total_sales_tax\n        - order_other_adjustment_total\n        - order_global_adjustments\n        - grand_total\n    \"\"\"\n\n    def to_decimal(value: Any) -> Decimal:\n        \"\"\"Convert a value to Decimal safely.\"\"\"\n        if isinstance(value, Decimal):\n            return value\n        # Handles None, numeric types, and strings\n        return Decimal(str(value)) if value is not None else Decimal('0')\n\n    # ------------------------------------------------------------------\n    # 1. Sub\u2011total\n    # ------------------------------------------------------------------\n    cart_lines: List[Dict[str, Any]] = request.get(\"cart_lines\", [])\n    if cart_lines:\n        sub_total = sum(\n            (to_decimal(line.get(\"item_sub_total\", 0)) for line in cart_lines),\n            Decimal('0')\n        )\n    else:\n        sub_total = to_decimal(request.get(\"sub_total\", 0))\n\n    # ------------------------------------------------------------------\n    # 2. Shipping & Tax (derived from ship_info)\n    # ------------------------------------------------------------------\n    ship_info: List[Dict[str, Any]] = request.get(\"ship_info\", [])\n    if ship_info:\n        total_shipping = sum(\n            (to_decimal(info.get(\"ship_estimate\", 0)) for info in ship_info),\n            Decimal('0')\n        )\n        total_sales_tax = sum(\n            (to_decimal(info.get(\"total_tax\", 0)) for info in ship_info),\n            Decimal('0')\n        )\n    else:\n        total_shipping = to_decimal(request.get(\"total_shipping\", 0))\n        total_sales_tax = to_decimal(request.get(\"total_sales_tax\", 0))\n\n    # ------------------------------------------------------------------\n    # 3. Order\u2011level (non\u2011global) adjustments\n    # ------------------------------------------------------------------\n    adjustments: List[Dict[str, Any]] = request.get(\"adjustments\", [])\n    order_other_adjustment_total = Decimal('0')\n    for adj in adjustments:\n        amount = to_decimal(adj.get(\"amount\", 0))\n        if adj.get(\"is_percent\", False):\n            # Percentage of sub_total\n            adj_amount = (sub_total * amount) / Decimal('100')\n        else:\n            adj_amount = amount\n        order_other_adjustment_total += adj_amount\n\n    # If no adjustments list, fall back to explicit field if present\n    if not adjustments:\n        order_other_adjustment_total = to_decimal(\n            request.get(\"order_other_adjustment_total\", 0)\n        )\n\n    # ------------------------------------------------------------------\n    # 4. Global adjustments (respect ship_group_seq_id filter)\n    # ------------------------------------------------------------------\n    global_adjustments: List[Dict[str, Any]] = request.get(\"global_adjustments\", [])\n    order_global_adjustments = Decimal('0')\n    for gadj in global_adjustments:\n        ship_group_seq_id = gadj.get(\"ship_group_seq_id\")\n        # Include only when None or exactly \"_NA_\"\n        if ship_group_seq_id is not None and ship_group_seq_id != \"_NA_\":\n            continue\n        amount = to_decimal(gadj.get(\"amount\", 0))\n        if gadj.get(\"is_percent\", False):\n            adj_amount = (sub_total * amount) / Decimal('100')\n        else:\n            adj_amount = amount\n        order_global_adjustments += adj_amount\n\n    # If no global_adjustments list, fall back to explicit field if present\n    if not global_adjustments:\n        order_global_adjustments = to_decimal(\n            request.get(\"order_global_adjustments\", 0)\n        )\n\n    # ------------------------------------------------------------------\n    # 5. Grand total\n    # ------------------------------------------------------------------\n    grand_total = (\n        sub_total\n        + total_shipping\n        + total_sales_tax\n        + order_other_adjustment_total\n        + order_global_adjustments\n    )\n\n    # Helper to format Decimal as string with two decimal places\n    def fmt(value: Decimal) -> str:\n        return str(value.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP))\n\n    return {\n        \"sub_total\": fmt(sub_total),\n        \"total_shipping\": fmt(total_shipping),\n        \"total_sales_tax\": fmt(total_sales_tax),\n        \"order_other_adjustment_total\": fmt(order_other_adjustment_total),\n        \"order_global_adjustments\": fmt(order_global_adjustments),\n        \"grand_total\": fmt(grand_total),\n    }",
+      "validation_feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+      "validation_results": [
+        {
+          "name": "baseline",
+          "baseline_mode": "provisional",
+          "passed": false,
+          "expected_normalized": {
+            "grand_total": "117.50"
+          },
+          "actual_normalized": {
+            "sub_total": "100.00",
+            "total_shipping": "10.00",
+            "total_sales_tax": "5.00",
+            "order_other_adjustment_total": "2.00",
+            "order_global_adjustments": "0.50",
+            "grand_total": "117.50"
+          },
+          "differences": [
+            "$.order_global_adjustments: unexpected value Decimal('0.50')",
+            "$.order_other_adjustment_total: unexpected value Decimal('2.00')",
+            "$.sub_total: unexpected value Decimal('100.00')",
+            "$.total_sales_tax: unexpected value Decimal('5.00')",
+            "$.total_shipping: unexpected value Decimal('10.00')"
+          ],
+          "input": {
+            "sub_total": 100.0,
+            "total_shipping": 10.0,
+            "total_sales_tax": 5.0,
+            "order_other_adjustment_total": 2.0,
+            "order_global_adjustments": 0.5
+          }
+        }
+      ],
+      "parity_report": {
+        "method": "getGrandTotal",
+        "baseline_mode": "provisional",
+        "overall_passed": false,
+        "tiers_passed": 1,
+        "tiers_total": 2,
+        "summary": "\u274c FAIL [getGrandTotal]  1/2 tiers passed  (baseline: provisional)",
+        "tiers": [
+          {
+            "tier": "T1_formula_completeness",
+            "passed": true,
+            "feedback": "T1 Formula Completeness: PASS",
+            "details": {
+              "tier": "T1_formula_completeness",
+              "passed": true,
+              "missing_terms": [],
+              "extra_terms": [
+                "grand_total"
+              ],
+              "checked_terms": [
+                "sub_total",
+                "total_shipping",
+                "total_sales_tax",
+                "order_other_adjustment_total",
+                "order_global_adjustments"
+              ]
+            },
+            "status": null
+          },
+          {
+            "tier": "T3_golden_file_equivalence",
+            "passed": true,
+            "feedback": "T3 skipped: baseline_mode is 'provisional', not 'golden_file'",
+            "details": {},
+            "status": "not_applicable"
+          },
+          {
+            "tier": "shadow_validation",
+            "passed": false,
+            "feedback": "Case 'baseline':\n  Input Payload: {\"sub_total\": 100.0, \"total_shipping\": 10.0, \"total_sales_tax\": 5.0, \"order_other_adjustment_total\": 2.0, \"order_global_adjustments\": 0.5}\n  Differences: Equivalence mismatch:\n$.order_global_adjustments: unexpected value Decimal('0.50')\n$.order_other_adjustment_total: unexpected value Decimal('2.00')\n$.sub_total: unexpected value Decimal('100.00')\n$.total_sales_tax: unexpected value Decimal('5.00')\n$.total_shipping: unexpected value Decimal('10.00')",
+            "details": {},
+            "status": null
+          }
+        ]
+      }
+    }
+  ]
+}

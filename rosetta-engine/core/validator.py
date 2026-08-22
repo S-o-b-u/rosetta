@@ -12,6 +12,7 @@ pipeline; it is available as a manual step for developers with a configured
 OFBiz runtime via the `java_executed` baseline_mode.
 """
 
+import os
 import json
 
 from core.equivalence import compare_outputs
@@ -53,9 +54,19 @@ def validator_node(state: RosettaState) -> RosettaState:
             }
         calc_func = namespace[target_func_name]
     except Exception as exc:
+        target_method = state.get('target_method', 'unknown')
+        dump_path = os.path.join(os.path.dirname(__file__), "..", "tests", "baselines", target_method, ".failed_candidate.py")
+        try:
+            os.makedirs(os.path.dirname(dump_path), exist_ok=True)
+            with open(dump_path, "w", encoding="utf-8") as f:
+                f.write(source)
+            dump_msg = f" (Saved to {dump_path})"
+        except Exception:
+            dump_msg = " (Failed to save candidate to disk)"
+            
         return {
             "validation_passed": False,
-            "validation_feedback": f"Candidate source failed to execute: {exc}",
+            "validation_feedback": f"Candidate source failed to execute: {exc}{dump_msg}",
         }
 
     # ------------------------------------------------------------------
