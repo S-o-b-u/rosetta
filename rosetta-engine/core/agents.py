@@ -30,6 +30,8 @@ def extract_code_block(text, language: str) -> str:
 def discovery_node(state: RosettaState) -> RosettaState:
     print(f"\n[Agent] Discovery: Analyzing legacy Java method '{state['target_method']}'...")
     
+    neo4j_context_str = json.dumps(state.get("neo4j_context") or {}, indent=2)
+    
     prompt = PromptTemplate.from_template("""
     You are a distinguished Principal Architect specializing in legacy modernization.
     Analyze the following Java code and extract:
@@ -38,6 +40,14 @@ def discovery_node(state: RosettaState) -> RosettaState:
     3. The expected output JSON response for each test payload.
     4. A structured list of formula_terms: every named output field that must appear in the response,
        each with its source Java method name and whether it is required.
+    
+    IMPORTANT NEO4J CONTEXT:
+    You are provided with an AST graph extraction of the legacy database operations and schema properties used by this method and its dependencies.
+    TREAT THIS NEO4J CONTEXT AS FACTUAL EXTRACTED EVIDENCE. 
+    DO NOT invent database entities, method dependencies, or schema keys if they are already available in this context. Use the schema properties found in the graph context to build your test payloads.
+    
+    Neo4j Graph Context:
+    {neo4j_context}
     
     Legacy Java Code:
     {java_code}
@@ -68,7 +78,8 @@ def discovery_node(state: RosettaState) -> RosettaState:
         try:
             response = chain.invoke({
                 "target_method": state["target_method"],
-                "java_code": state["java_code"]
+                "java_code": state["java_code"],
+                "neo4j_context": neo4j_context_str
             })
             parsed_json = json.loads(extract_code_block(response.content, "json"))
             break

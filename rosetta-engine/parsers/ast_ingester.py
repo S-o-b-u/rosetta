@@ -25,6 +25,16 @@ class GraphIngester:
             """
             session.run(query, service_name=service_name, table_name=table_name, action=action, migration_id=migration_id)
 
+    def create_method_call(self, source_method, target_method, migration_id):
+        """Creates a standardized Neo4j relationship: (Service)-[:CALLS]->(Service)"""
+        with self.driver.session() as session:
+            query = """
+            MERGE (s:Service {name: $source_method, migration_id: $migration_id})
+            MERGE (t:Service {name: $target_method, migration_id: $migration_id})
+            MERGE (s)-[:CALLS {migration_id: $migration_id}]->(t)
+            """
+            session.run(query, source_method=source_method, target_method=target_method, migration_id=migration_id)
+
 def load_framework_rules(framework_name):
     # Safely navigate from core/ back out to the rules/ folder
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'rules'))
@@ -61,9 +71,19 @@ def process_java_file_to_neo4j(file_path, framework, target_method, migration_id
         if node.name == target_method:
             print(f"[+] Found method: {target_method}. Analyzing dependencies...")
             
-            # Hunt for database interactions (Method Invocations)
+                # Hunt for database interactions (Method Invocations)
             for _, invoc in node.filter(javalang.tree.MethodInvocation):
                 
+                # Check for local method calls
+                if not invoc.qualifier or invoc.qualifier == "this":
+                    called_method = invoc.member
+                    
+                    # Exclude common JDK/library method names (e.g., BigDecimal methods)
+                    excluded_methods = {"add", "subtract", "multiply", "divide", "compareTo", "equals", "toString", "hashCode"}
+                    if called_method not in excluded_methods:
+                        print(f"    -> [MAPPED CALL] Method: {called_method}")
+                        ingester.create_method_call(target_method, called_method, migration_id)
+
                 # Check against dynamic READ patterns from our JSON
                 for pattern in rules["database"]["read_patterns"]:
                     

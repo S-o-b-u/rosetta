@@ -8,6 +8,10 @@ import {
 } from "@tabler/icons-react";
 import type { WindowDefinition } from "@/components/windows/types";
 
+import { CliApp } from "./CliApp";
+import { AstApp } from "./AstApp";
+import { GraphApp } from "./GraphApp";
+
 // ── Application definition ──
 export interface RosettaApp {
   id: string;
@@ -31,26 +35,6 @@ export function appToWindowDef(app: RosettaApp): WindowDefinition {
   };
 }
 
-// ── Placeholder content factory ──
-function PlaceholderContent({
-  title,
-  subtitle,
-}: {
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center space-y-2">
-        <div className="text-zinc-200 text-base font-semibold tracking-tight">
-          {title}
-        </div>
-        <div className="text-zinc-500 text-xs">{subtitle}</div>
-      </div>
-    </div>
-  );
-}
-
 // ── Registered applications ──
 export const appRegistry: RosettaApp[] = [
   {
@@ -62,12 +46,7 @@ export const appRegistry: RosettaApp[] = [
     defaultWidth: 720,
     defaultHeight: 460,
     defaultPosition: { x: 80, y: 40 },
-    content: (
-      <PlaceholderContent
-        title="Rosetta CLI"
-        subtitle="Migration command interface will appear here."
-      />
-    ),
+    content: <CliApp />,
   },
   {
     id: "ast",
@@ -78,12 +57,7 @@ export const appRegistry: RosettaApp[] = [
     defaultWidth: 760,
     defaultHeight: 500,
     defaultPosition: { x: 160, y: 60 },
-    content: (
-      <PlaceholderContent
-        title="AST Explorer"
-        subtitle="AST processing surface will appear here."
-      />
-    ),
+    content: <AstApp />,
   },
   {
     id: "graph",
@@ -94,12 +68,7 @@ export const appRegistry: RosettaApp[] = [
     defaultWidth: 800,
     defaultHeight: 520,
     defaultPosition: { x: 240, y: 80 },
-    content: (
-      <PlaceholderContent
-        title="Knowledge Graph"
-        subtitle="Graph visualization will appear here."
-      />
-    ),
+    content: <GraphApp />,
   },
 ];
 
