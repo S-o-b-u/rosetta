@@ -1,135 +1,105 @@
+from typing import Any, Dict
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+# ---------------------------------------------------------
+# VALIDATED DOMAIN LOGIC
+# (Certified by Rosetta Equivalence Pipeline)
+# ---------------------------------------------------------
 from decimal import Decimal
-from typing import List, Optional
-from fastapi import APIRouter, status
-from pydantic import BaseModel, Field
-
-router = APIRouter(tags=["Generated Service"])
+from typing import Any, Dict, List
 
 
-class CartLineItem(BaseModel):
-    item_sub_total: Decimal = Field(
-        ...,
-        ge=Decimal("0.00"),
-        description="Subtotal for an individual line item in the cart."
+def calculate_getGrandTotal(request: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Compute the grand total of an order from the supplied request payload.
+
+    Expected keys (both snake_case and camelCase are accepted):
+        - cart_lines / cartLines
+        - ship_info / shipGroups
+        - adjustments / orderAdjustments
+        - global_adjustments / globalAdjustments
+
+    Returns a dict containing every component of the formula and the final
+    grand_total, all as ``Decimal`` objects.
+    """
+
+    def _to_decimal(value: Any) -> Decimal:
+        """Convert a value that may be str, int, float or Decimal to Decimal."""
+        if isinstance(value, Decimal):
+            return value
+        if isinstance(value, (int, float)):
+            return Decimal(str(value))
+        if isinstance(value, str):
+            return Decimal(value)
+        return Decimal("0")
+
+    # ---------------------------------------------------------------------
+    # Sub‑total
+    # ---------------------------------------------------------------------
+    cart_lines: List[Dict[str, Any]] = request.get("cart_lines") or request.get(
+        "cartLines", []
     )
+    sub_total = Decimal("0")
+    for line in cart_lines:
+        if "item_sub_total" in line:
+            sub_total += _to_decimal(line["item_sub_total"])
+        elif "price" in line and "quantity" in line:
+            sub_total += _to_decimal(line["price"]) * _to_decimal(line["quantity"])
 
-
-class ShipInfo(BaseModel):
-    ship_estimate: Decimal = Field(
-        default=Decimal("0.00"),
-        ge=Decimal("0.00"),
-        description="Shipping estimate for a ship group."
+    # ---------------------------------------------------------------------
+    # Shipping & Sales Tax
+    # ---------------------------------------------------------------------
+    ship_info: List[Dict[str, Any]] = request.get("ship_info") or request.get(
+        "shipGroups", []
     )
-    total_tax: Decimal = Field(
-        default=Decimal("0.00"),
-        ge=Decimal("0.00"),
-        description="Sales tax calculated for a ship group."
+    total_shipping = Decimal("0")
+    total_sales_tax = Decimal("0")
+    for grp in ship_info:
+        total_shipping += _to_decimal(
+            grp.get("ship_estimate") or grp.get("shippingCost") or 0
+        )
+        total_sales_tax += _to_decimal(
+            grp.get("total_tax") or grp.get("salesTax") or 0
+        )
+
+    # ---------------------------------------------------------------------
+    # Order‑level adjustments (not tied to a ship group)
+    # ---------------------------------------------------------------------
+    adjustments: List[Dict[str, Any]] = request.get("adjustments") or request.get(
+        "orderAdjustments", []
     )
+    order_other_adjustment_total = Decimal("0")
+    for adj in adjustments:
+        amount = _to_decimal(adj.get("amount", 0))
+        is_percent = adj.get("is_percent", False)
+        if is_percent:
+            order_other_adjustment_total += (sub_total * amount) / Decimal("100")
+        else:
+            order_other_adjustment_total += amount
 
+    # ---------------------------------------------------------------------
+    # Global adjustments (apply to whole order)
+    # ---------------------------------------------------------------------
+    global_adjustments: List[Dict[str, Any]] = request.get(
+        "global_adjustments"
+    ) or request.get("globalAdjustments", [])
+    order_global_adjustments = Decimal("0")
+    for adj in global_adjustments:
+        ship_seq = adj.get("ship_group_seq_id")
+        # Include only when ship_group_seq_id is None or the sentinel "_NA_"
+        if ship_seq is None or ship_seq == "_NA_":
+            amount = _to_decimal(adj.get("amount", 0))
+            is_percent = adj.get("is_percent", False)
+            if is_percent:
+                order_global_adjustments += (sub_total * amount) / Decimal("100")
+            else:
+                order_global_adjustments += amount
+        # else: explicitly excluded
 
-class OrderAdjustment(BaseModel):
-    amount: Decimal = Field(
-        ...,
-        description="Adjustment amount (can be positive for charges or negative for discounts)."
-    )
-    is_percent: bool = Field(
-        default=False,
-        description="Indicates whether the adjustment amount is a percentage rate."
-    )
-    ship_group_seq_id: Optional[str] = Field(
-        default=None,
-        description="Associated ship group sequence identifier."
-    )
-
-
-class GrandTotalRequest(BaseModel):
-    cart_lines: List[CartLineItem] = Field(
-        default_factory=list,
-        description="Line items present in the shopping cart."
-    )
-    ship_info: List[ShipInfo] = Field(
-        default_factory=list,
-        description="Shipping and tax estimates per ship group."
-    )
-    adjustments: List[OrderAdjustment] = Field(
-        default_factory=list,
-        description="Non-shipping and non-tax order-level adjustments."
-    )
-    global_adjustments: List[OrderAdjustment] = Field(
-        default_factory=list,
-        description="Global order adjustments not tied to a specific ship group."
-    )
-
-
-class GrandTotalResponse(BaseModel):
-    sub_total: Decimal = Field(..., description="Sum of line item subtotals.")
-    total_shipping: Decimal = Field(..., description="Sum of shipping estimates.")
-    total_sales_tax: Decimal = Field(..., description="Sum of sales tax across ship groups.")
-    order_other_adjustment_total: Decimal = Field(..., description="Calculated non-shipping/tax order adjustments.")
-    order_global_adjustments: Decimal = Field(..., description="Calculated global order adjustments.")
-    grand_total: Decimal = Field(..., description="Calculated grand total cost of the cart.")
-
-
-def _calculate_adjustment_amount(
-    adjustment: OrderAdjustment,
-    base_amount: Decimal,
-    include_tax: bool = False,
-    include_shipping: bool = False,
-    tax_amount: Decimal = Decimal("0.00"),
-    shipping_amount: Decimal = Decimal("0.00")
-) -> Decimal:
-    applicable_base = base_amount
-    if include_tax:
-        applicable_base += tax_amount
-    if include_shipping:
-        applicable_base += shipping_amount
-
-    if adjustment.is_percent:
-        return (applicable_base * adjustment.amount) / Decimal("100.00")
-    return adjustment.amount
-
-
-@router.post(
-    "/calculate-grand-total",
-    response_model=GrandTotalResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Calculate Grand Total",
-    description="Calculate the final total cost of the shopping cart including line item totals, shipping costs, sales tax, and applicable order adjustments."
-)
-async def calculate_grand_total(request: GrandTotalRequest) -> GrandTotalResponse:
-    sub_total = sum((item.item_sub_total for item in request.cart_lines), Decimal("0.00"))
-    total_shipping = sum((ship.ship_estimate for ship in request.ship_info), Decimal("0.00"))
-    total_sales_tax = sum((ship.total_tax for ship in request.ship_info), Decimal("0.00"))
-
-    order_other_adjustment_total = sum(
-        (
-            _calculate_adjustment_amount(
-                adj,
-                base_amount=sub_total,
-                include_tax=False,
-                include_shipping=False
-            )
-            for adj in request.adjustments
-        ),
-        Decimal("0.00")
-    )
-
-    order_global_adjustments = sum(
-        (
-            _calculate_adjustment_amount(
-                adj,
-                base_amount=sub_total,
-                include_tax=True,
-                include_shipping=True,
-                tax_amount=total_sales_tax,
-                shipping_amount=total_shipping
-            )
-            for adj in request.global_adjustments
-            if adj.ship_group_seq_id in (None, "_NA_")
-        ),
-        Decimal("0.00")
-    )
-
+    # ---------------------------------------------------------------------
+    # Grand total
+    # ---------------------------------------------------------------------
     grand_total = (
         sub_total
         + total_shipping
@@ -138,11 +108,32 @@ async def calculate_grand_total(request: GrandTotalRequest) -> GrandTotalRespons
         + order_global_adjustments
     )
 
-    return GrandTotalResponse(
-        sub_total=sub_total,
-        total_shipping=total_shipping,
-        total_sales_tax=total_sales_tax,
-        order_other_adjustment_total=order_other_adjustment_total,
-        order_global_adjustments=order_global_adjustments,
-        grand_total=grand_total
-    )
+    return {
+        "sub_total": sub_total,
+        "total_shipping": total_shipping,
+        "total_sales_tax": total_sales_tax,
+        "order_other_adjustment_total": order_other_adjustment_total,
+        "order_global_adjustments": order_global_adjustments,
+        "grand_total": grand_total,
+    }
+
+# ---------------------------------------------------------
+# FASTAPI ROUTER WRAPPER
+# ---------------------------------------------------------
+router = APIRouter(tags=["Generated Service"])
+
+class GetGrandTotalRequest(BaseModel):
+    payload: Dict[str, Any]
+    
+    # Accept arbitrary payload fields to match the legacy signature
+    class Config:
+        extra = "allow"
+
+@router.post('/grand-total')
+async def handle_getgrandtotal(request: GetGrandTotalRequest):
+    """
+    Auto-generated FastAPI endpoint for getGrandTotal.
+    Wraps the certified pure function logic.
+    """
+    # Pass the entire Pydantic model dump (including extra fields) to the function
+    return calculate_getGrandTotal(request.model_dump())

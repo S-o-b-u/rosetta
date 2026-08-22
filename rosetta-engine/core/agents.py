@@ -1,7 +1,7 @@
 import os
 import re
 import json
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import PromptTemplate
 from core.state import RosettaState
 from core.formula_ir import extract_formula_ir_from_logic_json
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 # Initialize the LLM (Gemini 1.5 Pro/Flash for code reasoning)
-llm = ChatGoogleGenerativeAI(model="gemini-3.6-flash", temperature=0.1)
+llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1)
 
 # ==========================================
 # HELPER: MARKDOWN EXTRACTOR
@@ -60,12 +60,24 @@ def discovery_node(state: RosettaState) -> RosettaState:
     """)
     
     chain = prompt | llm
-    response = chain.invoke({
-        "target_method": state["target_method"],
-        "java_code": state["java_code"]
-    })
     
-    parsed_json = json.loads(extract_code_block(response.content, "json"))
+    max_retries = 3
+    parsed_json = None
+    for attempt in range(max_retries):
+        try:
+            response = chain.invoke({
+                "target_method": state["target_method"],
+                "java_code": state["java_code"]
+            })
+            parsed_json = json.loads(extract_code_block(response.content, "json"))
+            break
+        except json.JSONDecodeError as e:
+            print(f"[-] JSON parse error on attempt {attempt+1}: {e}. Retrying...")
+            if attempt == max_retries - 1:
+                print(f"[!] Failed to parse JSON after {max_retries} attempts.")
+                print(f"Raw output: {response.content}")
+                raise
+                
     logic_json_str = json.dumps(parsed_json)
 
     # Extract formula IR so validator can run T1 without re-parsing
@@ -124,24 +136,10 @@ def architecture_node(state: RosettaState) -> RosettaState:
     - The function MUST return a `dict`.
     - Do NOT import or use FastAPI, APIRouter, or Pydantic. Use only the Python standard library.
     - Do NOT write async functions. Use standard synchronous `def`.
-    - DYNAMIC COMPUTATION RULE: Look at the input payload structure inside the JSON. If it contains list or array fields (such as `cartLines`, `items`, etc.), your Python code MUST iterate through those lists, extract numeric values (like quantity, price, or line totals), and compute actual sums for subtotals, taxes, and grand totals. Never return hardcoded zero values if input lines exist.
+    - DYNAMIC COMPUTATION RULE: Look at the input payload structure inside the JSON. If it contains list or array fields, your Python code MUST iterate through those lists, extract numeric values, and compute actual sums. Never return hardcoded zero values if input lines exist.
     - FORMULA COMPLETENESS RULE: If the business logic contains a formula or multiple output components, use every required component in the final calculation. Do not return one component as the grand total.
     - RESPONSE CONTRACT RULE: Return all output fields described by the business logic, using stable snake_case names. Preserve every component even when its value is zero.
-    - SHOPPING CART MATH RULES (CRITICAL): 
-      1. sub_total = sum of all `cartLines` `itemSubTotal`.
-      2. total_shipping = sum of all `shipInfo` `shipEstimate`.
-      3. total_sales_tax = sum of all `shipInfo` `totalTax`.
-      4. order_other_adjustment_total = sum of all `adjustments` using base = sub_total.
-      5. order_global_adjustments = sum of all `globalAdjustments` using base = sub_total + total_shipping + total_sales_tax. BUT ONLY include if `shipGroupSeqId` is null (None) or "_NA_".
-      6. grand_total = sum of all 5 of the above components. 
-      7. USE THIS EXACT HELPER FUNCTION FOR ADJUSTMENTS TO PASS THE TESTS:
-```python
-def _calc_adj(adj: dict, base: float) -> float:
-    amt = float(adj.get("amount", 0.0))
-    if adj.get("is_percent") or adj.get("isPercent") or adj.get("isPercentage"):
-        return (base * amt) / 100.0
-    return amt
-```
+    - TDD DEBUGGING RULE: If you are retrying because a previous attempt failed validation, look extremely closely at the `validation_feedback`. The feedback will now include the exact `Input Payload` that caused the failure, the legacy `Expected Trace` (intermediate math steps), and the specific `Differences`. Use this concrete data to trace your code's execution, identify exactly why your logic calculated the wrong value for that payload, and fix the bug in your next version.
 
     
     {feedback_section}

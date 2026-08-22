@@ -269,7 +269,7 @@ _stage_idx = {"current": -1}
 def _stage_hook(msg: str):
     """Called when a pipeline node starts."""
     if not RICH_AVAILABLE:
-        print(msg)
+        _real_print(msg)
         return
     if "Discovery" in msg:
         _stage_idx["current"] = 0
@@ -359,6 +359,33 @@ def run_tests(args):
 # MIGRATE COMMAND
 # ==========================================
 
+def extract_java_method(java_code: str, method_name: str) -> str:
+    import re
+    pattern = re.compile(rf"(public|protected|private|static|\s)+[\w\<\>\[\]]+\s+{method_name}\s*\(")
+    match = pattern.search(java_code)
+    if not match:
+        return java_code
+    
+    start_idx = match.start()
+    brace_start = java_code.find("{", start_idx)
+    if brace_start == -1:
+        return java_code
+        
+    brace_count = 0
+    end_idx = -1
+    for i in range(brace_start, len(java_code)):
+        if java_code[i] == "{":
+            brace_count += 1
+        elif java_code[i] == "}":
+            brace_count -= 1
+            if brace_count == 0:
+                end_idx = i
+                break
+                
+    if end_idx != -1:
+        return java_code[start_idx:end_idx+1].strip()
+    return java_code
+
 def migrate(args):
     _banner()
 
@@ -379,7 +406,12 @@ def migrate(args):
         return
 
     with open(args.file, "r", encoding="utf-8") as f:
-        java_code = f.read()
+        full_java_code = f.read()
+        
+    java_code = extract_java_method(full_java_code, args.target)
+    
+    if RICH_AVAILABLE and len(java_code) < len(full_java_code):
+        console.print(f"[green][+] Extracted {args.target}() — reduced payload from {len(full_java_code)} to {len(java_code)} chars.[/green]")
 
     os.makedirs(args.output, exist_ok=True)
 

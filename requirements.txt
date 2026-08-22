@@ -1,0 +1,13 @@
+﻿langchain
+langchain-core
+langchain-groq
+langchain-google-genai
+langgraph
+pydantic
+python-dotenv
+rich
+pytest
+neo4j
+javalang
+fastapi
+uvicorn
