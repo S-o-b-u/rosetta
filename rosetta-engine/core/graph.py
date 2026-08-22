@@ -4,6 +4,21 @@ from core.state import RosettaState
 from core.agents import discovery_node, architecture_node
 from core.validator import validator_node
 from core.wrapper import wrapper_node
+from parsers.ast_ingester import ingest_and_get_context
+
+def ast_context_node(state: RosettaState) -> RosettaState:
+    migration_id = state.get("migration_id", "unknown-migration")
+    file_path = state["file_path"]
+    target_method = state["target_method"]
+    
+    print(f"\n[Node] AST/Neo4j Context: Ingesting {target_method}...")
+    try:
+        context = ingest_and_get_context(migration_id, file_path, target_method)
+        return {"neo4j_context": context}
+    except Exception as e:
+        print(f"[!] AST Ingestion failed: {e}")
+        return {"neo4j_context": None}
+
 
 # ==========================================
 # ROUTING LOGIC
@@ -24,13 +39,15 @@ def route_validation(state: RosettaState) -> str:
 workflow = StateGraph(RosettaState)
 
 # Add the nodes (using the imported functions from agents.py and wrappers)
+workflow.add_node("ast_context_node", ast_context_node)
 workflow.add_node("discovery_agent", discovery_node)
 workflow.add_node("architecture_agent", architecture_node)
 workflow.add_node("validator", validator_node)
 workflow.add_node("wrapper", wrapper_node)
 
 # Set the flow
-workflow.set_entry_point("discovery_agent")
+workflow.set_entry_point("ast_context_node")
+workflow.add_edge("ast_context_node", "discovery_agent")
 workflow.add_edge("discovery_agent", "architecture_agent")
 workflow.add_edge("architecture_agent", "validator")
 
