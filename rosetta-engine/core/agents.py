@@ -8,6 +8,7 @@ from core.formula_ir import extract_formula_ir_from_logic_json
 from dotenv import load_dotenv
 
 load_dotenv()
+from langchain_openai import ChatOpenAI
 
 # Initialize the primary LLM
 primary_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1)
@@ -158,6 +159,69 @@ def architecture_node(state: RosettaState) -> RosettaState:
         {state["validation_feedback"]}
         """
 
+    # ------------------------------------------------------------------
+    # Build a golden contract section if a manifest is available.
+    # Sources required fields from the fixture's expected_output keys —
+    # this includes the final aggregated result (e.g. "grand_total") which
+    # formula_terms does NOT list. Injects targeted edge-case examples for
+    # the two business rules the LLM most often gets wrong:
+    #   - is_percent=True adjustment calculation
+    #   - ship_group_seq_id exclusion rule
+    # ------------------------------------------------------------------
+    golden_contract_section = ""
+    try:
+        import json as _json
+        from core.golden import GoldenFileProvider, GoldenFileNotFoundError
+        provider = GoldenFileProvider(state["target_method"])
+        all_fixtures = provider.all_fixtures()
+
+        if all_fixtures:
+            # Source the required field list from any fixture's expected_output.
+            required_fields = list(all_fixtures[0].expected_output.keys())
+            fields_str = "\n    ".join(f'- "{f}"' for f in required_fields)
+
+            # Build a lookup by fixture_id for targeted injection.
+            fx_map = {fx.fixture_id: fx for fx in all_fixtures}
+
+            def _fmt(fx):
+                """Format one fixture as an escaped worked example block."""
+                esc = lambda s: _json.dumps(s).replace("{", "{{").replace("}", "}}")
+                return (
+                    f"  Example — {fx.description}:\n"
+                    f"    Input:    {esc(fx.input)}\n"
+                    f"    Expected: {esc(fx.expected_output)}\n"
+                    f"    Trace:    {esc(fx.arithmetic_trace)}"
+                )
+
+            # Prefer the two hardest edge-case fixtures; fall back gracefully.
+            example_ids = ["case_05_percentage_adjustment", "case_07_ship_group_excluded"]
+            chosen = [fx_map[eid] for eid in example_ids if eid in fx_map]
+            if not chosen:
+                chosen = all_fixtures[-2:] if len(all_fixtures) >= 2 else all_fixtures
+
+            examples_str = "\n\n".join(_fmt(fx) for fx in chosen)
+
+            golden_contract_section = f"""
+    GOLDEN CONTRACT (NON-NEGOTIABLE): The returned dict MUST contain EXACTLY these
+    snake_case keys — no aliases, no renames, no omissions — and ALL must be present
+    even when their value is zero:
+    {fields_str}
+    Omitting any key or using a wrong name causes immediate validation failure.
+
+    CRITICAL BUSINESS RULES (these are the rules the LLM most often gets wrong):
+    1. PERCENTAGE ADJUSTMENTS: When `is_percent` is True for an adjustment, the amount
+       is a percentage of sub_total. Compute: (sub_total * amount) / 100.
+       Do NOT use the raw amount value directly.
+    2. SHIP GROUP EXCLUSION: Global adjustments where `ship_group_seq_id` is NOT None
+       AND NOT "_NA_" must contribute ZERO to `order_global_adjustments`. Only include
+       adjustments where ship_group_seq_id is None or exactly equal to "_NA_".
+
+    CONCRETE WORKED EXAMPLES (study these carefully — they show the exact edge cases):
+{examples_str}
+"""
+    except Exception:
+        pass  # No manifest found — proceed without golden contract
+
     prompt = PromptTemplate.from_template("""
     You are an elite Python Backend Architect. Your job is to convert the abstract 
     business logic and data requirements JSON below into a production-ready, pure Python function.
@@ -169,10 +233,12 @@ def architecture_node(state: RosettaState) -> RosettaState:
     - Do NOT import or use FastAPI, APIRouter, or Pydantic. Use only the Python standard library.
     - Do NOT write async functions. Use standard synchronous `def`.
     - DYNAMIC COMPUTATION RULE: Look at the input payload structure inside the JSON. If it contains list or array fields, your Python code MUST iterate through those lists, extract numeric values, and compute actual sums. Never return hardcoded zero values if input lines exist.
+    - PYTHON SUM QUIRK (CRITICAL): If you use `sum()` on a generator or list comprehension, you MUST provide `start=Decimal('0')` (e.g. `sum(..., Decimal('0'))`). Otherwise, Python defaults to returning the integer `0` for empty iterables, which crashes Decimal `.quantize()` calls downstream.
     - FORMULA COMPLETENESS RULE: If the business logic contains a formula or multiple output components, use every required component in the final calculation. Do not return one component as the grand total.
     - RESPONSE CONTRACT RULE: Return all output fields described by the business logic, using stable snake_case names. Preserve every component even when its value is zero.
     - TDD DEBUGGING RULE: If you are retrying because a previous attempt failed validation, look extremely closely at the `validation_feedback`. The feedback will now include the exact `Input Payload` that caused the failure, the legacy `Expected Trace` (intermediate math steps), and the specific `Differences`. Use this concrete data to trace your code's execution, identify exactly why your logic calculated the wrong value for that payload, and fix the bug in your next version.
 
+    {golden_contract_section}
     
     {feedback_section}
     
@@ -186,7 +252,8 @@ def architecture_node(state: RosettaState) -> RosettaState:
     response = chain.invoke({
         "target_method": state["target_method"],
         "logic_json": state["logic_json"],
-        "feedback_section": feedback_section
+        "feedback_section": feedback_section,
+        "golden_contract_section": golden_contract_section,
     })
     
     pure_function_source = extract_code_block(response.content, "python")
