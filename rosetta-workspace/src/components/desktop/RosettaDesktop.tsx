@@ -6,6 +6,7 @@ import { WindowManager, useWindowManager } from './WindowManager';
 import { FloatingDock } from '@/components/ui/floating-dock';
 import { appRegistry, appToWindowDef, getAppById } from './appRegistry';
 import { getWindowState } from '@/components/windows/types';
+import { DynamicIsland } from './DynamicIsland';
 
 function DockContainer() {
   const { windows, actions } = useWindowManager();
@@ -79,6 +80,7 @@ export function RosettaDesktop() {
       <div className="absolute inset-0 bg-black/25 pointer-events-none" />
       
       <RosettaMenubar />
+      <DynamicIsland />
 
       <WindowManager desktopRef={desktopRef}>
         {/* Dock runs inside WindowManager so it can query window state & dispatch launches */}

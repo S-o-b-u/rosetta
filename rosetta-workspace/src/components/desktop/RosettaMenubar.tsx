@@ -36,9 +36,9 @@ export function RosettaMenubar() {
   }, []);
 
   return (
-    <header className="h-8 w-full bg-black/40 backdrop-blur-xl border-b border-white/[0.08] text-zinc-300 text-xs select-none shadow-sm flex items-center justify-between px-3 z-50 transition-colors">
+    <div className="absolute top-0 left-0 w-full h-12 pointer-events-none z-50 flex items-start justify-between px-4 pt-2">
       {/* Left side: Logo & Mac Menus */}
-      <div className="flex items-center space-x-1">
+      <div className="pointer-events-auto h-8 px-2 bg-black/40 backdrop-blur-xl border border-white/[0.08] text-zinc-300 text-xs rounded-xl shadow-sm flex items-center space-x-1">
         {/* Rosetta Core Symbol */}
         <button
           className="flex items-center gap-1.5 px-2 py-1 rounded-md text-zinc-100 hover:bg-white/10 transition-all font-semibold tracking-wider group"
@@ -64,7 +64,7 @@ export function RosettaMenubar() {
       </div>
 
       {/* Right side: Developer Symbolic Status & Realtime Mac Clock */}
-      <div className="flex items-center space-x-2">
+      <div className="pointer-events-auto h-8 px-2 bg-black/40 backdrop-blur-xl border border-white/[0.08] text-zinc-300 text-xs rounded-xl shadow-sm flex items-center space-x-2">
         {/* Rosetta Engine / Core Symbol */}
         <div
           className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.1] text-zinc-300 hover:text-white cursor-pointer transition-all text-[11px]"
@@ -105,6 +105,6 @@ export function RosettaMenubar() {
           {timeStr || 'Loading...'}
         </div>
       </div>
-    </header>
+    </div>
   );
 }
