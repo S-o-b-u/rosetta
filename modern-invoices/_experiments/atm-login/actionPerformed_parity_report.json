@@ -1,0 +1,115 @@
+{
+  "method": "actionPerformed",
+  "baseline_mode": "provisional",
+  "overall_passed": true,
+  "tiers_passed": 2,
+  "tiers_total": 2,
+  "summary": "\u26a0\ufe0f UNVERIFIED BASELINE [actionPerformed]  2/2 tiers passed  (baseline: provisional)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 Formula Completeness: PASS",
+      "details": {
+        "tier": "T1_formula_completeness",
+        "passed": true,
+        "missing_terms": [],
+        "extra_terms": [
+          "error_message",
+          "next_screen",
+          "fields_cleared"
+        ],
+        "checked_terms": [
+          "auth_success"
+        ]
+      },
+      "status": null
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": true,
+      "feedback": "T3 skipped: baseline_mode is 'provisional', not 'golden_file'",
+      "details": {},
+      "status": "not_applicable"
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Shadow: 3 case(s) passed",
+      "details": {
+        "cases": [
+          {
+            "name": "successful_login",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "auth_success": true,
+              "next_screen": "Transactions",
+              "error_message": null,
+              "fields_cleared": false
+            },
+            "actual_normalized": {
+              "auth_success": true,
+              "next_screen": "Transactions",
+              "error_message": null,
+              "fields_cleared": false
+            },
+            "differences": [],
+            "input": {
+              "cardno": "1234567890123456",
+              "pin": "1234",
+              "action": "login"
+            }
+          },
+          {
+            "name": "failed_login",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "auth_success": false,
+              "next_screen": null,
+              "error_message": "Incorrect Card Number or PIN",
+              "fields_cleared": false
+            },
+            "actual_normalized": {
+              "auth_success": false,
+              "next_screen": null,
+              "error_message": "Incorrect Card Number or PIN",
+              "fields_cleared": false
+            },
+            "differences": [],
+            "input": {
+              "cardno": "9999999999999999",
+              "pin": "0000",
+              "action": "login"
+            }
+          },
+          {
+            "name": "clear_fields",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {
+              "auth_success": null,
+              "next_screen": null,
+              "error_message": null,
+              "fields_cleared": true
+            },
+            "actual_normalized": {
+              "auth_success": null,
+              "next_screen": null,
+              "error_message": null,
+              "fields_cleared": true
+            },
+            "differences": [],
+            "input": {
+              "cardno": "",
+              "pin": "",
+              "action": "clear"
+            }
+          }
+        ]
+      },
+      "status": null
+    }
+  ]
+}

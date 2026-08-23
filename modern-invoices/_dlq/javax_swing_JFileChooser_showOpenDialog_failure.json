@@ -1,0 +1,9 @@
+{
+  "method": "javax.swing.JFileChooser.showOpenDialog",
+  "file_path": "",
+  "reason_category": "provider_error",
+  "timestamp": "2026-08-23T01:30:32.772014Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": null
+}

@@ -9,9 +9,14 @@ class RosettaState(TypedDict):
     target_method: str
     java_code: str
     source_lang: str
+    source_framework: NotRequired[str]    # e.g. "ofbiz", "swing_java" — selects rules/*.json
     target_framework: str
     neo4j_context: NotRequired[Dict[str, Any]]
     graph_context: NotRequired[str]
+    neo4j_status: NotRequired[str]         # "connected" | "unreachable" — set by health gate
+    call_graph_csv_path: NotRequired[str]  # Optional path to OpenRewrite CallGraph.csv for fast-path ingestion
+    output: NotRequired[str]               # Output directory for the migration
+    migrated_dependencies: NotRequired[Dict[str, Dict[str, Any]]] # Contract dictionary for injected context
 
     # ==========================================
     # 2. AGENT OUTPUTS (Populated during pipeline)

@@ -1,0 +1,9 @@
+{
+  "method": "ASimulatorSystem.BalanceEnquiry.actionPerformed",
+  "file_path": "",
+  "reason_category": "dependency_unresolved",
+  "timestamp": "2026-08-23T01:30:32.803845Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": "ASimulatorSystem.Transactions.<constructor>"
+}

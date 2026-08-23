@@ -1,0 +1,37 @@
+{
+    "framework": "Swing Java (JDBC)",
+    "database": {
+        "read_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "conn",
+                "methods": [
+                    "prepareStatement",
+                    "createStatement",
+                    "executeQuery"
+                ]
+            }
+        ],
+        "write_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "conn",
+                "methods": [
+                    "executeUpdate",
+                    "prepareStatement"
+                ]
+            }
+        ]
+    },
+    "services": {
+        "trigger_patterns": [
+            {
+                "type": "method_call",
+                "qualifier": "Conn",
+                "methods": [
+                    "<constructor>"
+                ]
+            }
+        ]
+    }
+}

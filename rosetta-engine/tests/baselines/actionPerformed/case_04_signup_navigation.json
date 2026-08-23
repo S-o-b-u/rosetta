@@ -1,0 +1,13 @@
+{
+  "fixture_id": "case_04_signup_navigation",
+  "description": "Signup button pressed",
+  "input": {
+    "action": "signup"
+  },
+  "expected_output": {
+    "auth_success": null,
+    "next_screen": "Signup",
+    "error_message": null
+  },
+  "arithmetic_trace": {}
+}

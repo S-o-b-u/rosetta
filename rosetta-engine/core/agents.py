@@ -11,12 +11,12 @@ load_dotenv()
 from langchain_openai import ChatOpenAI
 
 # Initialize the primary LLM
-primary_llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1)
+primary_llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0.1)
 
 # Wire up Cerebras fallback if the API key is present
 if os.getenv("CEREBRAS_API_KEY"):
     fallback_llm = ChatOpenAI(
-        model="gpt-oss-120b",
+        model="llama3.1-70b",
         api_key=os.getenv("CEREBRAS_API_KEY"),
         base_url="https://api.cerebras.ai/v1",
         temperature=0.1,
@@ -42,24 +42,66 @@ def extract_code_block(text, language: str) -> str:
 # 1. DISCOVERY AGENT (The Cleansing Chamber)
 # ==========================================
 def discovery_node(state: RosettaState) -> RosettaState:
-    source_lang = state.get("source_lang", "java").title()
+    source_lang      = state.get("source_lang", "java").title()
+    source_framework = state.get("source_framework", "ofbiz")
     print(f"\n[Agent] Discovery: Analyzing legacy {source_lang} method '{state['target_method']}'...")
-    
+
     neo4j_context_str = json.dumps(state.get("neo4j_context") or {}, indent=2)
     
+    migrated_deps = state.get("migrated_dependencies", {})
+    deps_str = ""
+    if migrated_deps:
+        deps_str = "\n    ALREADY MIGRATED DEPENDENCIES (Use their strict contract behavior, do not invent it):\n    " + json.dumps(migrated_deps, indent=4).replace("\n", "\n    ")
+
+    # ----------------------------------------------------------------
+    # Phase 3: Framework-specific boilerplate instructions
+    # These tell the LLM *what to ignore* so it focuses on
+    # pure business logic regardless of the source framework.
+    # ----------------------------------------------------------------
+    _framework_boilerplate = {
+        "ofbiz": (
+            "You are analyzing Apache OFBiz enterprise Java code. "
+            "Strip away all OFBiz-specific boilerplate: GenericDelegator, LocalDispatcher, "
+            "DispatchContext, GenericValue, EntityQuery, ServiceUtil.returnSuccess/returnError. "
+            "Focus ONLY on the business rules, calculations, and data transformations."
+        ),
+        "swing_java": (
+            "You are analyzing a legacy Java Swing desktop application. "
+            "Strip away all Swing/AWT UI boilerplate: ActionEvent, ActionListener, JButton, "
+            "JFrame, JTextField, JLabel, JOptionPane, setLayout, addActionListener, getContentPane. "
+            "Focus ONLY on the business logic: what data is read from form fields, "
+            "what database operations are performed via JDBC (Conn class), "
+            "what business rules/validations are applied, and what the outcome is. "
+            "IMPORTANT: If there are raw SQL queries (e.g., `select * from ...`), preserve the EXACT SQL string in the 'logic' description. Do not abstract it into English. "
+            "CRITICAL — formula_terms must list ONLY the OUTPUT fields returned by the function "
+            "(e.g. auth_success, next_screen, error_message). "
+            "Do NOT include input fields (e.g. cardno, pin, action) in formula_terms — "
+            "those belong in schema_keys only."
+        ),
+    }
+    framework_instruction = _framework_boilerplate.get(
+        source_framework,
+        f"Strip away framework-specific boilerplate for '{source_framework}'. Focus on pure business logic."
+    )
+
     prompt = PromptTemplate.from_template("""
     You are a distinguished Principal Architect specializing in legacy modernization.
+    
+    FRAMEWORK CONTEXT:
+    {framework_instruction}
+    
     Analyze the following {source_lang} code and extract:
     1. The pure business logic and calculation rules for method: {target_method}.
     2. At least three canonical JSON test payloads representing the input parameters this method expects.
     3. The expected output JSON response for each test payload.
     4. A structured list of formula_terms: every named output field that must appear in the response,
        each with its source {source_lang} method name and whether it is required.
-    
+       
     IMPORTANT NEO4J CONTEXT:
     You are provided with an AST graph extraction of the legacy database operations and schema properties used by this method and its dependencies.
     TREAT THIS NEO4J CONTEXT AS FACTUAL EXTRACTED EVIDENCE. 
     DO NOT invent database entities, method dependencies, or schema keys if they are already available in this context. Use the schema properties found in the graph context to build your test payloads.
+    {deps_str}
     
     Neo4j Graph Context:
     {neo4j_context}
@@ -89,18 +131,20 @@ def discovery_node(state: RosettaState) -> RosettaState:
     2. Properly escape all internal double quotes inside string fields (like the "logic" field).
     3. Output ONLY the raw JSON object inside the markdown code block. Do not output any conversational text before or after it.
     """)
-    
+
     chain = prompt | llm
-    
+
     max_retries = 3
     parsed_json = None
     for attempt in range(max_retries):
         try:
             response = chain.invoke({
-                "target_method": state["target_method"],
-                "java_code": state["java_code"],
-                "neo4j_context": neo4j_context_str,
-                "source_lang": source_lang
+                "target_method":       state["target_method"],
+                "java_code":           state["java_code"],
+                "neo4j_context":       neo4j_context_str,
+                "source_lang":         source_lang,
+                "framework_instruction": framework_instruction,
+                "deps_str":            deps_str,
             })
             parsed_json = json.loads(extract_code_block(response.content, "json"))
             break
@@ -110,6 +154,7 @@ def discovery_node(state: RosettaState) -> RosettaState:
                 print(f"[!] Failed to parse JSON after {max_retries} attempts.")
                 print(f"Raw output: {response.content}")
                 raise
+
                 
     logic_json_str = json.dumps(parsed_json)
 
@@ -222,12 +267,27 @@ def architecture_node(state: RosettaState) -> RosettaState:
     except Exception:
         pass  # No manifest found — proceed without golden contract
 
+    source_framework = state.get("source_framework", "ofbiz")
+    
+    migrated_deps = state.get("migrated_dependencies", {})
+    deps_str = ""
+    if migrated_deps:
+        deps_str = "\n    ALREADY MIGRATED DEPENDENCIES (If your logic calls these, you MUST use their exact Python signatures and behaviors):\n    " + json.dumps(migrated_deps, indent=4).replace("\n", "\n    ")
+    
+    framework_specific_rules = ""
+    if source_framework == "swing_java":
+        framework_specific_rules = """
+    - SCOPED SIDE-EFFECTS RULE (swing_java): If the business logic explicitly describes executing a database query where the query *is* the core business decision (e.g., authentication, balance checks), you are PERMITTED to `import sqlite3` and execute the query directly inside the function against `bankmanagementsystem.db`. For other methods where data is just fetched and then calculated, keep the function pure.
+    - SQL INJECTION GUARDRAIL (NON-NEGOTIABLE): If you write database access code, you MUST rewrite any legacy string-concatenation SQL (e.g. `cardno = '"+cardno+"'`) into parameterized queries (e.g. `cursor.execute("SELECT ... WHERE cardno = ?", (cardno,))`) to prevent SQL injection vulnerabilities.
+        """
+
+    safe_method_name = state['target_method'].replace("<", "").replace(">", "").replace("-", "_")
     prompt = PromptTemplate.from_template("""
     You are an elite Python Backend Architect. Your job is to convert the abstract 
-    business logic and data requirements JSON below into a production-ready, pure Python function.
+    business logic and data requirements JSON below into a production-ready, pure Python function (unless framework rules permit side-effects).
     
     CRITICAL ARCHITECTURAL CONSTRAINTS:
-    - Generate a single pure Python function named `calculate_{target_method}`.
+    - Generate a single pure Python function named `calculate_{safe_method_name}`.
     - The function MUST accept exactly one argument named `request` of type `dict` (or `Any`).
     - The function MUST return a `dict`.
     - Do NOT import or use FastAPI, APIRouter, or Pydantic. Use only the Python standard library.
@@ -237,10 +297,12 @@ def architecture_node(state: RosettaState) -> RosettaState:
     - FORMULA COMPLETENESS RULE: If the business logic contains a formula or multiple output components, use every required component in the final calculation. Do not return one component as the grand total.
     - RESPONSE CONTRACT RULE: Return all output fields described by the business logic, using stable snake_case names. Preserve every component even when its value is zero.
     - TDD DEBUGGING RULE: If you are retrying because a previous attempt failed validation, look extremely closely at the `validation_feedback`. The feedback will now include the exact `Input Payload` that caused the failure, the legacy `Expected Trace` (intermediate math steps), and the specific `Differences`. Use this concrete data to trace your code's execution, identify exactly why your logic calculated the wrong value for that payload, and fix the bug in your next version.
-
+    {framework_specific_rules}
+    
     {golden_contract_section}
     
     {feedback_section}
+    {deps_str}
     
     Abstract Business Logic & Data Schema:
     {logic_json}
@@ -251,9 +313,12 @@ def architecture_node(state: RosettaState) -> RosettaState:
     chain = prompt | llm
     response = chain.invoke({
         "target_method": state["target_method"],
+        "safe_method_name": safe_method_name,
         "logic_json": state["logic_json"],
         "feedback_section": feedback_section,
         "golden_contract_section": golden_contract_section,
+        "framework_specific_rules": framework_specific_rules,
+        "deps_str": deps_str,
     })
     
     pure_function_source = extract_code_block(response.content, "python")

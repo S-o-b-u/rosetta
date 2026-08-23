@@ -1,0 +1,9 @@
+{
+  "method": "javax.swing.JFrame.setLayout",
+  "file_path": "",
+  "reason_category": "provider_error",
+  "timestamp": "2026-08-23T01:30:32.706882Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": null
+}

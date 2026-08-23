@@ -1,0 +1,43 @@
+{
+  "method": "<init>",
+  "baseline_mode": "provisional",
+  "overall_passed": true,
+  "tiers_passed": 2,
+  "tiers_total": 2,
+  "summary": "\u26a0\ufe0f UNVERIFIED BASELINE [<init>]  2/2 tiers passed  (baseline: provisional)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 skipped: no formula IR available",
+      "details": {},
+      "status": null
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": true,
+      "feedback": "T3 skipped: baseline_mode is 'provisional', not 'golden_file'",
+      "details": {},
+      "status": "not_applicable"
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Shadow: 1 case(s) passed",
+      "details": {
+        "cases": [
+          {
+            "name": "baseline",
+            "baseline_mode": "provisional",
+            "passed": true,
+            "expected_normalized": {},
+            "actual_normalized": {},
+            "differences": [],
+            "input": {}
+          }
+        ]
+      },
+      "status": null
+    }
+  ]
+}
