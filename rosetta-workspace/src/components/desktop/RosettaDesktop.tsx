@@ -60,7 +60,7 @@ function DockContainer() {
     <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-50">
       <FloatingDock
         items={dockItems}
-        desktopClassName="bg-neutral-950/80 dark:bg-neutral-950/85 backdrop-blur-2xl border border-white/[0.12] shadow-2xl shadow-black/70 rounded-3xl px-4 pb-3"
+        desktopClassName=""
       />
     </div>
   );

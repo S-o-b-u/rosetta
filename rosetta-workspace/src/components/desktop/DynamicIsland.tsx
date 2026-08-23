@@ -81,15 +81,15 @@ export function DynamicIsland() {
 
   const pillWidth = expanded
     ? status === "running"
-      ? 440
-      : 320
-    : 180;
+      ? 460
+      : 340
+    : 190;
 
   const pillHeight = expanded
     ? status === "running"
-      ? 72
-      : 56
-    : 36;
+      ? 78
+      : 62
+    : 38;
 
   return (
     <div
@@ -105,7 +105,7 @@ export function DynamicIsland() {
         blurIntensity="xl"
         glowIntensity="xs"
         shadowIntensity="xs"
-        borderRadius={expanded ? '20px' : '18px'}
+        borderRadius={expanded ? '22px' : '999px'}
         className="pointer-events-auto overflow-hidden relative"
         style={{
           width: pillWidth,
@@ -161,7 +161,7 @@ export function DynamicIsland() {
 
 function IdleContent() {
   return (
-    <div className="flex items-center gap-2 px-4">
+    <div className="flex items-center gap-2.5 px-5 py-2">
       <span className="text-[12px] font-bold tracking-widest text-white">
         RECAST
       </span>
@@ -171,8 +171,8 @@ function IdleContent() {
 
 function ConnectingContent() {
   return (
-    <div className="flex items-center gap-3 px-5">
-      <IconLoader2 size={16} className="text-white animate-spin" />
+    <div className="flex items-center gap-3 px-5 py-2">
+      <IconLoader2 size={15} className="text-white animate-spin" />
       <span className="text-[12px] font-bold tracking-wide text-white uppercase">
         Connecting
       </span>
@@ -238,7 +238,7 @@ function CompletedContent({
   expanded: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-5">
+    <div className="flex items-center gap-3 px-5 py-3 w-full">
       <div className="w-6 h-6 flex items-center justify-center shrink-0 bg-white text-black rounded-sm">
         <IconCheck size={14} stroke={3} />
       </div>
@@ -272,7 +272,7 @@ function FailedContent({
   expanded: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 px-5">
+    <div className="flex items-center gap-3 px-5 py-3 w-full">
       <div className="w-6 h-6 flex items-center justify-center shrink-0 bg-white text-black rounded-sm">
         <IconX size={14} stroke={3} />
       </div>
