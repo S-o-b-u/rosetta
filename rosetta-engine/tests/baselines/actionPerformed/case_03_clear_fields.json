@@ -1,0 +1,13 @@
+{
+  "fixture_id": "case_03_clear_fields",
+  "description": "Clear fields button pressed",
+  "input": {
+    "action": "clear"
+  },
+  "expected_output": {
+    "auth_success": null,
+    "next_screen": null,
+    "error_message": null
+  },
+  "arithmetic_trace": {}
+}

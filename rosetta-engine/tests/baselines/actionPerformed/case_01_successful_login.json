@@ -1,0 +1,18 @@
+{
+  "fixture_id": "case_01_successful_login",
+  "description": "Happy path - valid credentials present in DB",
+  "input": {
+    "action": "login",
+    "cardno": "1234567890123456",
+    "pin": "1234"
+  },
+  "expected_output": {
+    "auth_success": true,
+    "next_screen": "Transactions",
+    "error_message": null,
+    "fields_cleared": false
+  },
+  "arithmetic_trace": {
+    "query_result": "1 row returned"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "method": "actionPerformed",
+  "baseline_mode": "golden_file",
+  "overall_passed": false,
+  "tiers_passed": 1,
+  "tiers_total": 2,
+  "summary": "\u274c FAIL [actionPerformed]  1/2 tiers passed (1 superseded)  (baseline: golden_file)",
+  "tiers": [
+    {
+      "tier": "T1_formula_completeness",
+      "passed": true,
+      "feedback": "T1 Formula Completeness: PASS",
+      "details": {
+        "tier": "T1_formula_completeness",
+        "passed": true,
+        "missing_terms": [],
+        "extra_terms": [
+          "error_message",
+          "next_screen"
+        ],
+        "checked_terms": [
+          "auth_success"
+        ]
+      },
+      "status": null
+    },
+    {
+      "tier": "T3_golden_file_equivalence",
+      "passed": false,
+      "feedback": "T3 FAIL: baseline_mode is 'golden_file' but no fixtures found for 'actionPerformed'",
+      "details": {},
+      "status": null
+    },
+    {
+      "tier": "shadow_validation",
+      "passed": true,
+      "feedback": "Skipped: golden_file oracle supersedes LLM-guessed shadow cases",
+      "details": {},
+      "status": "superseded"
+    }
+  ]
+}

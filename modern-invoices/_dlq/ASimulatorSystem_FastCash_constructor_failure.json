@@ -1,0 +1,9 @@
+{
+  "method": "ASimulatorSystem.FastCash.<constructor>",
+  "file_path": "",
+  "reason_category": "dependency_unresolved",
+  "timestamp": "2026-08-23T01:30:32.787122Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": "javax.swing.JFrame.setLayout"
+}

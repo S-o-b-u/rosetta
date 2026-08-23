@@ -1,0 +1,9 @@
+{
+  "method": "ASimulatorSystem.Signup3.main",
+  "file_path": "",
+  "reason_category": "dependency_unresolved",
+  "timestamp": "2026-08-23T01:30:32.828330Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": "ASimulatorSystem.Signup3.<constructor>"
+}

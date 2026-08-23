@@ -1,0 +1,15 @@
+{
+  "fixture_id": "case_05_sql_injection",
+  "description": "SQL Injection attempt - should be safely rejected by parameterized query",
+  "input": {
+    "action": "login",
+    "cardno": "' OR '1'='1",
+    "pin": "' OR '1'='1"
+  },
+  "expected_output": {
+    "auth_success": false,
+    "next_screen": null,
+    "error_message": "Incorrect Card Number or PIN"
+  },
+  "arithmetic_trace": {}
+}

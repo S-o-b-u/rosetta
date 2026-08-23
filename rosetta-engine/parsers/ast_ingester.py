@@ -114,13 +114,19 @@ def process_java_file_to_neo4j(file_path, framework, target_method, migration_id
     ingester.close()
 
 # Test block for local execution
-def ingest_and_get_context(migration_id: str, file_path: str, target_method: str) -> dict:
+def ingest_and_get_context(migration_id: str, file_path: str, target_method: str, framework: str = "ofbiz") -> dict:
     """
     Integration function for the Rosetta migration pipeline.
     Ingests the Java file into Neo4j and returns the resulting graph subgraph.
+    
+    Parameters
+    ----------
+    framework : str
+        Name of the rules file to use (e.g. "ofbiz", "swing_java").
+        Defaults to "ofbiz" for backwards-compatibility.
     """
-    # 1. Run the existing ingestion (hardcoding "ofbiz" as the framework for now)
-    process_java_file_to_neo4j(file_path, "ofbiz", target_method, migration_id)
+    # 1. Run the existing ingestion with the specified framework rules
+    process_java_file_to_neo4j(file_path, framework, target_method, migration_id)
     
     # 2. Query Neo4j to build the context dictionary
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")

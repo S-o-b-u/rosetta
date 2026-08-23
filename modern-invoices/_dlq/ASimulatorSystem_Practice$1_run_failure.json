@@ -1,0 +1,9 @@
+{
+  "method": "ASimulatorSystem.Practice$1.run",
+  "file_path": "",
+  "reason_category": "dependency_unresolved",
+  "timestamp": "2026-08-23T01:30:32.823357Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": "javax.swing.JFileChooser.getSelectedFile"
+}

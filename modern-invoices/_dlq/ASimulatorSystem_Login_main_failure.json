@@ -1,0 +1,9 @@
+{
+  "method": "ASimulatorSystem.Login.main",
+  "file_path": "",
+  "reason_category": "dependency_unresolved",
+  "timestamp": "2026-08-23T01:30:32.816932Z",
+  "attempts": [],
+  "parity_report": {},
+  "blocked_on": "ASimulatorSystem.Login.<constructor>"
+}

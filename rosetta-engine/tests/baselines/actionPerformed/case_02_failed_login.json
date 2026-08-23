@@ -1,0 +1,18 @@
+{
+  "fixture_id": "case_02_failed_login",
+  "description": "Sad path - invalid credentials not in DB",
+  "input": {
+    "action": "login",
+    "cardno": "9999999999999999",
+    "pin": "0000"
+  },
+  "expected_output": {
+    "auth_success": false,
+    "next_screen": null,
+    "error_message": "Incorrect Card Number or PIN",
+    "fields_cleared": false
+  },
+  "arithmetic_trace": {
+    "query_result": "0 rows returned"
+  }
+}

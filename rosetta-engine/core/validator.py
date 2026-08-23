@@ -45,7 +45,8 @@ def validator_node(state: RosettaState) -> RosettaState:
         namespace = {}
         exec(compile(source, "<candidate>", "exec"), namespace)
         
-        target_func_name = f"calculate_{state['target_method']}"
+        safe_method_name = state['target_method'].replace("<", "").replace(">", "").replace("-", "_")
+        target_func_name = f"calculate_{safe_method_name}"
         if target_func_name not in namespace:
             return {
                 "validation_passed": False,

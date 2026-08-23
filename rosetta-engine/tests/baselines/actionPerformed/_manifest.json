@@ -1,0 +1,36 @@
+{
+  "method": "actionPerformed",
+  "source_class": "ASimulatorSystem.Login",
+  "formula": "Query database and determine success",
+  "capture_mode": "golden_file",
+  "capture_date": "2026-08-23T00:00:00Z",
+  "formula_terms": [
+    {
+      "name": "auth_success",
+      "source_method": "actionPerformed",
+      "required": true
+    },
+    {
+      "name": "next_screen",
+      "source_method": "actionPerformed",
+      "required": false
+    },
+    {
+      "name": "error_message",
+      "source_method": "actionPerformed",
+      "required": false
+    },
+    {
+      "name": "fields_cleared",
+      "source_method": "actionPerformed",
+      "required": false
+    }
+  ],
+  "cases": [
+    "case_01_successful_login",
+    "case_02_failed_login",
+    "case_03_clear_fields",
+    "case_04_signup_navigation",
+    "case_05_sql_injection"
+  ]
+}
