@@ -7,6 +7,7 @@
 
 import { cn } from "@/lib/utils";
 import { IconLayoutNavbarCollapse } from "@tabler/icons-react";
+import { LiquidGlassCard } from "@/components/ui/liquid-glass";
 import {
   AnimatePresence,
   MotionValue,
@@ -100,18 +101,29 @@ const FloatingDockDesktop = ({
 }) => {
   let mouseX = useMotionValue(Infinity);
   return (
-    <motion.div
-      onMouseMove={(e) => mouseX.set(e.pageX)}
-      onMouseLeave={() => mouseX.set(Infinity)}
-      className={cn(
-        "mx-auto hidden h-16 items-end gap-4 rounded-2xl bg-gray-50 px-4 pb-3 md:flex dark:bg-neutral-900",
-        className,
-      )}
+    <LiquidGlassCard
+      draggable={false}
+      expandable={false}
+      blurIntensity="xl"
+      glowIntensity="xs"
+      shadowIntensity="sm"
+      borderRadius="28px"
+      className={cn("mx-auto hidden md:flex", className)}
+      style={{
+        background: 'rgba(8,8,8,0.72)',
+        border: '1px solid rgba(255,255,255,0.1)',
+      }}
     >
-      {items.map((item) => (
-        <IconContainer mouseX={mouseX} key={item.title} {...item} />
-      ))}
-    </motion.div>
+      <motion.div
+        onMouseMove={(e) => mouseX.set(e.pageX)}
+        onMouseLeave={() => mouseX.set(Infinity)}
+        className="relative z-30 flex h-16 items-end gap-4 px-5 pb-3"
+      >
+        {items.map((item) => (
+          <IconContainer mouseX={mouseX} key={item.title} {...item} />
+        ))}
+      </motion.div>
+    </LiquidGlassCard>
   );
 };
 
@@ -177,15 +189,16 @@ function IconContainer({
         style={{ width, height }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative flex aspect-square items-center justify-center rounded-full bg-gray-200 dark:bg-neutral-800"
+        className="relative flex aspect-square items-center justify-center rounded-full bg-white/10 hover:bg-white/[0.15] transition-colors"
       >
         <AnimatePresence>
           {hovered && (
             <motion.div
-              initial={{ opacity: 0, y: 10, x: "-50%" }}
+              initial={{ opacity: 0, y: 6, x: "-50%" }}
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 2, x: "-50%" }}
-              className="absolute -top-8 left-1/2 w-fit rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-xs whitespace-pre text-neutral-700 dark:border-neutral-900 dark:bg-neutral-800 dark:text-white"
+              className="absolute -top-8 left-1/2 w-fit rounded-full px-2.5 py-0.5 text-[11px] whitespace-pre text-white font-medium tracking-wide"
+              style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)' }}
             >
               {title}
             </motion.div>

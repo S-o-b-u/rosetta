@@ -145,6 +145,12 @@ async def migrate_stream(request: MigrateRequest):
             })
             return
 
+        # ── Detect Golden Fixtures ──
+        baseline_mode = request.baseline_mode
+        manifest_path = os.path.join(engine_path, "tests", "baselines", request.target_method, "_manifest.json")
+        if os.path.exists(manifest_path):
+            baseline_mode = "golden_file"
+
         # ── Build the initial state (same shape as CLI) ──
         initial_state = {
             "migration_id": migration_id,
@@ -158,7 +164,7 @@ async def migrate_stream(request: MigrateRequest):
             "wrapped_service_source": None,
             "candidate_source": None,
             "test_cases": None,
-            "baseline_mode": request.baseline_mode,
+            "baseline_mode": baseline_mode,
             "baseline_command": None,
             "validation_results": None,
             "parity_report": None,

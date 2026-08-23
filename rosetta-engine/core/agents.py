@@ -120,7 +120,7 @@ def discovery_node(state: RosettaState) -> RosettaState:
       ],
       "schema_keys": ["list of main incoming payload keys like cartLines, shipGroups, etc."],
       "test_payload": {{ ...first input fields matching the Java method... }},
-      "expected_output": {{ "grand_total": 137.1 }},
+      "expected_output": {{ "sub_total": 100.0, "grand_total": 137.1 }},
       "test_cases": [
           {{"name": "baseline", "payload": {{ ... }}, "expected_output": {{ ... }} }}
       ]

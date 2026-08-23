@@ -18,27 +18,22 @@ const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
 
 /* ── Palette ── */
 const P = {
-  bg: "#070b14",
-  nodePrimary: "#58a6ff",
+  bg: "#0d1117", 
+  panel: "#161b22",
+  border: "#30363d",
+  nodePrimary: "#58a6ff", 
   nodeSecondary: "#56d4dd",
-  edgeColor: "#1a3a5c",
-  labelText: "#e6edf3",
-  dim: "#3b4252",
-  green: "#3fb950",
+  edgeLine: "#1e3a5f",
+  labelText: "#f0f6fc",
+  dim: "#8b949e",
   purple: "#bc8cff",
 };
 
-/* ── Legend ── */
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-2">
-      <div
-        className="w-2 h-2 rounded-full"
-        style={{ background: color, boxShadow: `0 0 8px ${color}60` }}
-      />
-      <span className="text-[10px] font-mono" style={{ color: "#6b7280" }}>
-        {label}
-      </span>
+      <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+      <span className="text-[10px] font-mono" style={{ color: "#6b7280" }}>{label}</span>
     </div>
   );
 }
@@ -57,7 +52,8 @@ export function GraphApp() {
     const obs = new ResizeObserver((entries) => {
       for (const e of entries) {
         const { width, height } = e.contentRect;
-        if (width > 0 && height > 0) setDims({ w: Math.floor(width), h: Math.floor(height) });
+        if (width > 0 && height > 0)
+          setDims({ w: Math.floor(width), h: Math.floor(height) });
       }
     });
     obs.observe(containerRef.current);
@@ -67,17 +63,15 @@ export function GraphApp() {
   // ── Graph data from real neo4j_context ──
   const graphData = useMemo(() => {
     if (!neo4jContext?.nodes?.length) return { nodes: [], links: [] };
-
     const targetId = neo4jContext.edges?.length > 0
       ? neo4jContext.edges[0].source
       : neo4jContext.nodes[0]?.id;
-
     return {
       nodes: neo4jContext.nodes.map((n: GraphNode) => ({
         id: n.id,
-        label: n.label,
+        label: n.id,
         isTarget: n.id === targetId,
-        val: n.id === targetId ? 10 : 5,
+        val: n.id === targetId ? 12 : 6,
       })),
       links: (neo4jContext.edges ?? []).map((e: GraphEdge) => ({
         source: e.source,
@@ -95,78 +89,75 @@ export function GraphApp() {
       const isHov = hovered === node.id;
       const group = new THREE.Group();
 
-      const radius = isTarget ? 5 : 3.5;
+      const radius = isTarget ? 6 : 4;
       const color = isTarget ? P.nodePrimary : P.nodeSecondary;
 
-      // Core sphere — PBR material
-      const geo = new THREE.SphereGeometry(radius, 64, 64);
-      const mat = new THREE.MeshStandardMaterial({
+      // Core sphere
+      const geo = new THREE.SphereGeometry(radius, 32, 32);
+      const mat = new THREE.MeshPhongMaterial({
         color: new THREE.Color(color),
         emissive: new THREE.Color(color),
-        emissiveIntensity: isHov ? 0.6 : 0.2,
-        roughness: 0.25,
-        metalness: 0.6,
+        emissiveIntensity: isHov ? 0.5 : 0.15,
+        shininess: 80,
         transparent: true,
-        opacity: isHov ? 1.0 : 0.9,
+        opacity: 0.95,
       });
       group.add(new THREE.Mesh(geo, mat));
 
-      // Outer glow sphere
-      const glowGeo = new THREE.SphereGeometry(radius * 1.6, 32, 32);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(color),
-        transparent: true,
-        opacity: isHov ? 0.12 : 0.04,
-        side: THREE.BackSide,
-      });
-      group.add(new THREE.Mesh(glowGeo, glowMat));
+      // Glow halo (only for hover or target)
+      if (isTarget || isHov) {
+        const glowGeo = new THREE.SphereGeometry(radius * 1.8, 16, 16);
+        const glowMat = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(color),
+          transparent: true,
+          opacity: isHov ? 0.1 : 0.05,
+          side: THREE.BackSide,
+        });
+        group.add(new THREE.Mesh(glowGeo, glowMat));
+      }
 
-      // Text label sprite — retina-quality
-      const scale = 2; // retina
+      // Text label sprite
+      const scale = 2;
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d")!;
-      const fontSize = (isTarget ? 26 : 20) * scale;
+      const fontSize = (isTarget ? 24 : 18) * scale;
       const text = node.id;
-      ctx.font = `600 ${fontSize}px "Inter", "SF Pro", system-ui, sans-serif`;
+      ctx.font = `600 ${fontSize}px "Inter", system-ui, sans-serif`;
       const tm = ctx.measureText(text);
-      const pad = 16 * scale;
+      const pad = 14 * scale;
       const cw = tm.width + pad * 2;
-      const ch = fontSize + pad * 1.4;
+      const ch = fontSize + pad * 1.2;
       canvas.width = cw;
       canvas.height = ch;
 
-      // Background pill
-      ctx.fillStyle = "rgba(7, 11, 20, 0.82)";
-      const r = (ch / 2);
+      // Pill background
+      ctx.fillStyle = "rgba(7, 11, 20, 0.85)";
+      const rr = ch / 2;
       ctx.beginPath();
-      ctx.roundRect(0, 0, cw, ch, r);
+      ctx.roundRect(0, 0, cw, ch, rr);
       ctx.fill();
 
       // Border
-      ctx.strokeStyle = `${color}40`;
+      ctx.strokeStyle = `${color}50`;
       ctx.lineWidth = 1.5 * scale;
       ctx.beginPath();
-      ctx.roundRect(0, 0, cw, ch, r);
+      ctx.roundRect(0, 0, cw, ch, rr);
       ctx.stroke();
 
       // Text
+      ctx.font = `600 ${fontSize}px "Inter", system-ui, sans-serif`;
       ctx.fillStyle = isTarget ? P.nodePrimary : P.labelText;
-      ctx.font = `600 ${fontSize}px "Inter", "SF Pro", system-ui, sans-serif`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(text, cw / 2, ch / 2);
 
       const tex = new THREE.CanvasTexture(canvas);
       tex.minFilter = THREE.LinearFilter;
-      const spriteMat = new THREE.SpriteMaterial({
-        map: tex,
-        transparent: true,
-        depthWrite: false,
-      });
+      const spriteMat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
       const sprite = new THREE.Sprite(spriteMat);
-      const spriteScale = 0.045;
-      sprite.scale.set(cw * spriteScale, ch * spriteScale, 1);
-      sprite.position.set(0, radius + 4, 0);
+      const ss = 0.04;
+      sprite.scale.set(cw * ss, ch * ss, 1);
+      sprite.position.set(0, radius + 3.5, 0);
       group.add(sprite);
 
       return group;
@@ -174,84 +165,50 @@ export function GraphApp() {
     [hovered]
   );
 
-  // ── Scene post-processing ──
-  const onEngineInit = useCallback((fg: any) => {
-    if (!fg) return;
-    const scene = fg.scene();
+  // ── Scene setup ──
+  const handleEngineStop = useCallback(() => {
+    if (!fgRef.current) return;
     const THREE = require("three");
+    const scene = fgRef.current.scene?.();
+    if (!scene) return;
 
-    // Remove any existing custom lights (prevent duplicates)
-    const toRemove: any[] = [];
-    scene.traverse((child: any) => {
-      if (child.userData?.__rosetta_light) toRemove.push(child);
-    });
-    toRemove.forEach((l: any) => scene.remove(l));
+    // Only add lights once
+    if (scene.userData.__lightsAdded) return;
+    scene.userData.__lightsAdded = true;
 
-    // Ambient
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
-    ambient.userData.__rosetta_light = true;
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     scene.add(ambient);
 
-    // Main directional
     const dir = new THREE.DirectionalLight(0x58a6ff, 0.8);
-    dir.position.set(50, 80, 60);
-    dir.userData.__rosetta_light = true;
+    dir.position.set(60, 80, 60);
     scene.add(dir);
 
-    // Back fill
     const fill = new THREE.DirectionalLight(0x56d4dd, 0.3);
-    fill.position.set(-40, -30, -50);
-    fill.userData.__rosetta_light = true;
+    fill.position.set(-40, -20, -50);
     scene.add(fill);
-
-    // Subtle bottom glow
-    const bottom = new THREE.PointLight(0xbc8cff, 0.2, 200);
-    bottom.position.set(0, -60, 0);
-    bottom.userData.__rosetta_light = true;
-    scene.add(bottom);
-
-    // Scene background
-    scene.background = new THREE.Color(P.bg);
-
-    // Camera position
-    fg.cameraPosition({ x: 0, y: 0, z: 120 });
   }, []);
 
-  // ── Fit camera after data ──
+  // ── Fit + setup on data change ──
   useEffect(() => {
     if (fgRef.current && graphData.nodes.length > 0) {
       const t = setTimeout(() => {
-        onEngineInit(fgRef.current);
-        fgRef.current?.zoomToFit?.(800, 50);
-      }, 600);
+        // Zoom tighter on first glance
+        fgRef.current?.zoomToFit?.(600, 20);
+        const dist = fgRef.current.cameraPosition().z;
+        if (dist > 150) {
+          fgRef.current.cameraPosition({ z: 120 }, null, 600);
+        }
+      }, 500);
       return () => clearTimeout(t);
     }
-  }, [graphData, onEngineInit]);
-
-  // ── Auto-rotate ──
-  useEffect(() => {
-    if (!fgRef.current || graphData.nodes.length === 0) return;
-    let frame: number;
-    const rotate = () => {
-      if (fgRef.current) {
-        const scene = fgRef.current.scene();
-        if (scene) scene.rotation.y += 0.0008;
-      }
-      frame = requestAnimationFrame(rotate);
-    };
-    frame = requestAnimationFrame(rotate);
-    return () => cancelAnimationFrame(frame);
   }, [graphData]);
 
   // ── Empty state ──
   if (!neo4jContext || graphData.nodes.length === 0) {
     return (
-      <div
-        className="flex flex-col items-center justify-center h-full font-mono gap-4"
-        style={{ background: P.bg }}
-      >
-        <div className="w-16 h-16 rounded-2xl border border-white/5 flex items-center justify-center bg-white/[0.02]">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b4252" strokeWidth="1.5">
+      <div className="flex flex-col items-center justify-center h-full font-mono gap-4" style={{ background: P.bg }}>
+        <div className="w-16 h-16 rounded border flex items-center justify-center" style={{ borderColor: P.border, background: P.panel }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={P.dim} strokeWidth="1.5">
             <circle cx="12" cy="5" r="2" />
             <circle cx="5" cy="19" r="2" />
             <circle cx="19" cy="19" r="2" />
@@ -259,22 +216,14 @@ export function GraphApp() {
             <line x1="12" y1="7" x2="19" y2="17" />
           </svg>
         </div>
-        <div className="text-[13px] font-medium" style={{ color: "#4b5563" }}>
-          Knowledge Graph
-        </div>
-        <div className="text-[11px]" style={{ color: "#374151" }}>
-          Run a migration to visualize dependencies
-        </div>
+        <div className="text-[12px] font-medium" style={{ color: P.labelText }}>Knowledge Graph</div>
+        <div className="text-[11px]" style={{ color: P.dim }}>Run a migration to visualize dependencies</div>
       </div>
     );
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-full overflow-hidden"
-      style={{ background: P.bg }}
-    >
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden" style={{ background: P.bg }}>
       <ForceGraph3D
         ref={fgRef}
         graphData={graphData}
@@ -282,85 +231,77 @@ export function GraphApp() {
         height={dims.h}
         backgroundColor={P.bg}
         showNavInfo={false}
+        enableNavigationControls={true}
         // Nodes
         nodeThreeObject={nodeThreeObject}
         nodeThreeObjectExtend={false}
+        nodeLabel={() => ""}
         // Links
-        linkColor={() => P.edgeColor}
-        linkWidth={2}
-        linkOpacity={0.5}
-        linkDirectionalArrowLength={4}
+        linkColor={() => P.edgeLine}
+        linkWidth={1.5}
+        linkOpacity={0.6}
+        linkDirectionalArrowLength={5}
         linkDirectionalArrowRelPos={0.85}
-        linkDirectionalArrowColor={() => P.nodeSecondary + "80"}
-        linkDirectionalParticles={3}
-        linkDirectionalParticleWidth={1.2}
+        linkDirectionalArrowColor={() => P.nodeSecondary + "99"}
+        linkDirectionalParticles={2}
+        linkDirectionalParticleWidth={1.5}
         linkDirectionalParticleColor={() => P.nodePrimary}
-        linkDirectionalParticleSpeed={0.005}
+        linkDirectionalParticleSpeed={0.006}
         // Interaction
         onNodeHover={(n: any) => setHovered(n?.id ?? null)}
-        // Forces
-        d3AlphaDecay={0.03}
-        d3VelocityDecay={0.25}
-        warmupTicks={50}
-        cooldownTicks={100}
+        // Engine
+        onEngineStop={handleEngineStop}
+        d3AlphaDecay={0.025}
+        d3VelocityDecay={0.3}
+        warmupTicks={80}
+        cooldownTicks={0}
       />
 
-      {/* HUD */}
-      <div className="absolute top-4 left-4 z-10 pointer-events-none">
-        <div className="text-[14px] font-semibold font-mono" style={{ color: P.labelText }}>
-          Knowledge Graph
+      {/* HUD top-left */}
+      <div className="absolute top-0 left-0 right-0 p-3 flex justify-between pointer-events-none">
+        <div>
+          <div className="text-[11px] font-semibold font-mono" style={{ color: P.labelText }}>
+            Knowledge Graph
+          </div>
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: P.dim }}>
+            {graphData.nodes.length} nodes · {graphData.links.length} edges
+          </div>
         </div>
-        <div className="text-[11px] font-mono mt-0.5" style={{ color: P.dim }}>
-          {graphData.nodes.length} services · {graphData.links.length} dependencies
+        <div className="text-[9px] font-mono text-right" style={{ color: P.dim }}>
+          left drag: rotate · scroll: zoom · right drag: pan
         </div>
       </div>
 
       {/* Legend */}
       <div
-        className="absolute bottom-4 left-4 flex flex-col gap-1 px-3 py-2 rounded-xl z-10 pointer-events-none"
-        style={{
-          background: "rgba(7,11,20,0.85)",
-          border: "1px solid rgba(255,255,255,0.05)",
-          backdropFilter: "blur(12px)",
-        }}
+        className="absolute bottom-3 left-3 flex flex-col gap-1.5 px-3 py-2 pointer-events-none"
+        style={{ background: P.panel, border: `1px solid ${P.border}` }}
       >
-        <LegendDot color={P.nodePrimary} label="Target" />
+        <LegendDot color={P.nodePrimary} label="Target method" />
         <LegendDot color={P.nodeSecondary} label="Dependency" />
-        <LegendDot color={P.purple} label="CALLS" />
       </div>
 
-      {/* Hover tooltip */}
+      {/* Hover info */}
       {hovered && (
         <div
-          className="absolute top-4 right-4 px-3 py-2 rounded-xl font-mono text-[12px] z-10 pointer-events-none"
-          style={{
-            background: "rgba(7,11,20,0.92)",
-            border: `1px solid ${P.nodePrimary}30`,
-            backdropFilter: "blur(12px)",
-          }}
+          className="absolute bottom-3 right-3 px-3 py-2 font-mono text-[11px] pointer-events-none text-right"
+          style={{ background: P.panel, border: `1px solid ${P.border}` }}
         >
-          <div style={{ color: P.nodePrimary }} className="font-semibold">
-            {hovered}
-          </div>
-          <div className="text-[10px] mt-1" style={{ color: P.dim }}>
-            {graphData.links.filter(
-              (l: any) => (l.source === hovered || l.source?.id === hovered)
-            ).length}{" "}
-            out ·{" "}
-            {graphData.links.filter(
-              (l: any) => (l.target === hovered || l.target?.id === hovered)
-            ).length}{" "}
-            in
+          <div style={{ color: P.nodePrimary }} className="font-semibold">{hovered}</div>
+          <div className="text-[10px] mt-0.5" style={{ color: P.dim }}>
+            {graphData.links.filter((l: any) =>
+              (typeof l.source === "string" ? l.source : l.source?.id) === hovered
+            ).length} out ·{" "}
+            {graphData.links.filter((l: any) =>
+              (typeof l.target === "string" ? l.target : l.target?.id) === hovered
+            ).length} in
           </div>
         </div>
       )}
 
       {/* Controls hint */}
-      <div
-        className="absolute bottom-4 right-4 text-[10px] font-mono z-10 pointer-events-none"
-        style={{ color: P.dim }}
-      >
-        drag: rotate · scroll: zoom · right-drag: pan
+      <div className="absolute bottom-3 right-3 text-[9px] font-mono z-10 pointer-events-none" style={{ color: P.dim }}>
+        left drag: rotate · scroll: zoom · right drag: pan
       </div>
     </div>
   );

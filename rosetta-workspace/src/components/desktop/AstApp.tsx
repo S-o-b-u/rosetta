@@ -1,374 +1,262 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useMigration } from "@/lib/migration";
-import {
-  IconChevronDown,
-  IconChevronRight,
-  IconCircleCheck,
-  IconCircleDashed,
-  IconBraces,
-  IconArrowRight,
-  IconFunction,
-  IconAlertTriangle,
-} from "@tabler/icons-react";
 
-/* ── Colour palette ── */
-const P = {
-  bg: "#0d1117",
-  sidebar: "#161b22",
-  border: "#30363d",
-  text: "#e6edf3",
-  dim: "#484f58",
-  blue: "#58a6ff",
-  cyan: "#56d4dd",
-  green: "#3fb950",
-  red: "#f85149",
-  purple: "#bc8cff",
-  yellow: "#d29922",
-  orange: "#f0883e",
+/* ── Subtle Monochrome + 2 Accent Palette ── */
+const T = {
+  bg:      "#000000",
+  surface: "#0A0A0A",
+  surface2:"#121212",
+  border:  "#262626",
+  text:    "#FFFFFF",
+  dim:     "#A3A3A3",
+  muted:   "#525252",
+  accent:  "#E5E5E5",
+  subtle:  "#1E1E1E",
+  // Exactly 2 accent colors for AST highlights
+  hi1:     "#3b82f6",   // blue - extracted dependencies
+  hi2:     "#8b5cf6",   // purple - keywords & return
 };
 
-/* ──────────────────────────────────────────────────
-   Collapsible section with indent lines
-   ────────────────────────────────────────────────── */
-function TreeSection({
-  title,
-  icon,
-  color,
-  badge,
-  defaultOpen = false,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  color: string;
-  badge?: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+function PipelineStep({ label, done }: { label: string; done: boolean }) {
   return (
-    <div>
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/5 transition-colors text-left"
-      >
-        {open ? (
-          <IconChevronDown size={14} style={{ color }} />
-        ) : (
-          <IconChevronRight size={14} style={{ color }} />
-        )}
-        <span style={{ color }}>{icon}</span>
-        <span className="text-[13px] font-medium" style={{ color: P.text }}>
-          {title}
-        </span>
-        {badge && (
-          <span
-            className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full font-medium"
-            style={{ background: color + "22", color }}
-          >
-            {badge}
-          </span>
-        )}
-      </button>
-      {open && (
-        <div className="ml-6 border-l" style={{ borderColor: P.border }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────
-   A single key-value leaf in the tree
-   ────────────────────────────────────────────────── */
-function Leaf({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="flex items-start gap-2 px-3 py-1 text-[12px] hover:bg-white/[0.03] group">
-      <span style={{ color: P.dim }}>{label}:</span>
-      <span className="break-all" style={{ color: color ?? P.text }}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-/* ──────────────────────────────────────────────────
-   Node card (for graph nodes)
-   ────────────────────────────────────────────────── */
-function NodeRow({
-  id,
-  label,
-  isTarget,
-}: {
-  id: string;
-  label: string;
-  isTarget?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-white/[0.04] rounded mx-1">
+    <div className="flex items-center gap-3">
       <div
-        className="w-2 h-2 rounded-full shrink-0"
-        style={{ background: isTarget ? P.blue : P.cyan }}
+        className="w-2.5 h-2.5 rounded-full shrink-0"
+        style={{ 
+          background: done ? T.accent : T.surface2, 
+          border: `1px solid ${done ? T.accent : T.border}`
+        }}
       />
-      <span style={{ color: P.text }} className="font-medium">
-        {id}
-      </span>
-      <span
-        className="text-[10px] px-1.5 rounded"
-        style={{ background: P.border, color: P.dim }}
-      >
+      <span className="text-[12px] font-medium tracking-wide" style={{ color: done ? T.text : T.dim }}>
         {label}
       </span>
-      {isTarget && (
-        <span className="text-[10px] ml-auto" style={{ color: P.blue }}>
-          target
-        </span>
+      {done && (
+        <span className="ml-auto text-[10px] font-bold" style={{ color: T.accent }}>✓</span>
       )}
     </div>
   );
 }
 
-/* ──────────────────────────────────────────────────
-   Edge row
-   ────────────────────────────────────────────────── */
-function EdgeRow({
-  source,
-  target,
-  label,
-}: {
-  source: string;
-  target: string;
-  label: string;
-}) {
+function HighlightedJavaCode({ targetId, extractedNodes }: { targetId: string | null, extractedNodes: string[] }) {
+  const isExtracted = (name: string) => extractedNodes.includes(name);
+
   return (
-    <div className="flex items-center gap-2 px-3 py-1 text-[12px] hover:bg-white/[0.04] rounded mx-1">
-      <span style={{ color: P.cyan }}>{source}</span>
-      <IconArrowRight size={12} style={{ color: P.dim }} />
-      <span style={{ color: P.purple }}>{target}</span>
-      <span
-        className="ml-auto text-[10px] px-1.5 rounded"
-        style={{ background: P.border, color: P.dim }}
-      >
-        {label}
-      </span>
+    <div className="font-mono text-[13px] leading-[1.8] w-full min-w-max">
+      <div style={{ color: T.muted }}>{"/**"}</div>
+      <div style={{ color: T.muted }}>{" * AST Parser resolving dependencies for "}{targetId ?? "target"}{"..."}</div>
+      <div style={{ color: T.muted }}>{" */"}</div>
+      <div className="mt-2 flex">
+        <span style={{ color: T.hi2, width: "60px" }}>public</span>
+        <span style={{ color: T.dim, width: "90px" }}>BigDecimal</span>
+        <span style={{ color: T.text }} className="font-bold">getGrandTotal</span>
+        <span style={{ color: T.dim }}>() {'{'}</span>
+      </div>
+      
+      <div className="pl-8 border-l border-dashed mt-2" style={{ borderColor: T.border }}>
+        <div>
+          <span style={{ color: T.dim }}>BigDecimal</span> <span style={{ color: T.text }}>grandTotal = BigDecimal.ZERO;</span>
+        </div>
+        
+        <div className="mt-4" style={{ color: T.muted }}>// Extracted AST Dependency</div>
+        <div>
+          <span style={{ color: T.dim }}>grandTotal = grandTotal.</span><span style={{ color: T.text }}>add</span>(
+          <span 
+            className="px-1.5 py-0.5 mx-0.5 rounded font-medium transition-colors" 
+            style={{ 
+              background: isExtracted("getSubTotal") ? T.hi1 + "20" : "transparent",
+              color: isExtracted("getSubTotal") ? T.hi1 : T.dim 
+            }}
+          >
+            getSubTotal()
+          </span>);
+        </div>
+        
+        <div className="mt-4" style={{ color: T.muted }}>// Extracted AST Dependency</div>
+        <div>
+          <span style={{ color: T.dim }}>grandTotal = grandTotal.</span><span style={{ color: T.text }}>add</span>(
+          <span 
+            className="px-1.5 py-0.5 mx-0.5 rounded font-medium transition-colors" 
+            style={{ 
+              background: isExtracted("getTotalShipping") ? T.hi1 + "20" : "transparent", 
+              color: isExtracted("getTotalShipping") ? T.hi1 : T.dim 
+            }}
+          >
+            getTotalShipping()
+          </span>);
+        </div>
+
+        <div className="mt-4" style={{ color: T.muted }}>// Extracted AST Dependency</div>
+        <div>
+          <span style={{ color: T.dim }}>grandTotal = grandTotal.</span><span style={{ color: T.text }}>add</span>(
+          <span 
+            className="px-1.5 py-0.5 mx-0.5 rounded font-medium transition-colors" 
+            style={{ 
+              background: isExtracted("getTotalSalesTax") ? T.hi1 + "20" : "transparent", 
+              color: isExtracted("getTotalSalesTax") ? T.hi1 : T.dim 
+            }}
+          >
+            getTotalSalesTax()
+          </span>);
+        </div>
+
+        <div className="mt-4" style={{ color: T.muted }}>// Extracted AST Dependency</div>
+        <div>
+          <span style={{ color: T.dim }}>grandTotal = grandTotal.</span><span style={{ color: T.text }}>add</span>(
+          <span 
+            className="px-1.5 py-0.5 mx-0.5 rounded font-medium transition-colors" 
+            style={{ 
+              background: isExtracted("getOrderOtherAdjustmentTotal") ? T.hi1 + "20" : "transparent", 
+              color: isExtracted("getOrderOtherAdjustmentTotal") ? T.hi1 : T.dim 
+            }}
+          >
+            getOrderOtherAdjustmentTotal()
+          </span>);
+        </div>
+
+        <div className="mt-4" style={{ color: T.muted }}>// Extracted AST Dependency</div>
+        <div>
+          <span style={{ color: T.dim }}>grandTotal = grandTotal.</span><span style={{ color: T.text }}>add</span>(
+          <span 
+            className="px-1.5 py-0.5 mx-0.5 rounded font-medium transition-colors" 
+            style={{ 
+              background: isExtracted("getOrderGlobalAdjustments") ? T.hi1 + "20" : "transparent", 
+              color: isExtracted("getOrderGlobalAdjustments") ? T.hi1 : T.dim 
+            }}
+          >
+            getOrderGlobalAdjustments()
+          </span>);
+        </div>
+
+        <div className="mt-4">
+          <span style={{ color: T.hi2 }}>return</span> <span style={{ color: T.text }}>grandTotal;</span>
+        </div>
+      </div>
+      <div className="mt-2" style={{ color: T.dim }}>{'}'}</div>
     </div>
   );
 }
 
-/* ──────────────────────────────────────────────────
-   Pipeline stage indicator
-   ────────────────────────────────────────────────── */
-function StageIndicator({ name, active }: { name: string; active: boolean }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 text-[12px]">
-      {active ? (
-        <IconCircleCheck size={14} style={{ color: P.green }} />
-      ) : (
-        <IconCircleDashed size={14} style={{ color: P.dim }} />
-      )}
-      <span style={{ color: active ? P.text : P.dim }}>{name}</span>
-    </div>
-  );
-}
-
-/* ══════════════════════════════════════════════════
-   Main AST Explorer component
-   ══════════════════════════════════════════════════ */
 export function AstApp() {
   const { state } = useMigration();
-  const {
-    neo4jContext,
-    discoveryData,
-    architectureData,
-    validatorData,
-    parityReport,
-  } = state;
+  const { neo4jContext, discoveryData } = state;
 
   const nodes = neo4jContext?.nodes ?? [];
   const edges = neo4jContext?.edges ?? [];
-  const targetId = edges.length > 0 ? edges[0].source : nodes[0]?.id;
+  const targetId = edges.length > 0 ? edges[0].source : (nodes[0]?.id || "getGrandTotal");
+  const extractedNodeIds = nodes.map((n: { id: string }) => n.id);
 
-  const formulaIr = discoveryData
-    ? (discoveryData as any).formula_ir
-    : null;
-  const testCases = discoveryData
-    ? (discoveryData as any).test_cases
-    : null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const disc = discoveryData as any;
+  const formulaIr = disc?.formula_ir ?? null;
 
   return (
-    <div
-      className="flex h-full font-mono text-[13px] overflow-hidden select-text"
-      style={{ background: P.bg, color: P.text }}
-    >
-      {/* ── Left: Tree ── */}
-      <div
-        className="w-[300px] shrink-0 flex flex-col overflow-hidden"
-        style={{ background: P.sidebar, borderRight: `1px solid ${P.border}` }}
-      >
-        {/* header */}
-        <div
-          className="px-3 py-2 text-[11px] font-semibold uppercase tracking-widest shrink-0"
-          style={{ color: P.dim, borderBottom: `1px solid ${P.border}` }}
-        >
-          Explorer
+    <div className="flex h-full overflow-hidden" style={{ background: T.bg, color: T.text }}>
+      
+      {/* ── LEFT SIDEBAR ── */}
+      <div className="w-[280px] shrink-0 flex flex-col" style={{ borderRight: `1px solid ${T.border}`, background: T.surface }}>
+        
+        {/* Pipeline Section */}
+        <div className="p-5" style={{ borderBottom: `1px solid ${T.border}` }}>
+          <div className="text-[10px] font-bold tracking-widest mb-4" style={{ color: T.dim }}>AST PIPELINE</div>
+          <div className="space-y-4">
+            <PipelineStep label="Source Parsed" done={!!neo4jContext} />
+            <PipelineStep label="Graph Ingested" done={!!neo4jContext} />
+            <PipelineStep label="Logic Extracted" done={!!discoveryData} />
+            <PipelineStep label="Formula Derived" done={!!discoveryData} />
+          </div>
         </div>
 
-        {/* pipeline stages */}
-        <div className="py-2" style={{ borderBottom: `1px solid ${P.border}` }}>
-          <StageIndicator name="AST / Neo4j" active={!!neo4jContext} />
-          <StageIndicator name="Discovery" active={!!discoveryData} />
-          <StageIndicator name="Architecture" active={!!architectureData} />
-          <StageIndicator name="Validator" active={!!validatorData} />
-        </div>
-
-        {/* tree content */}
-        <div className="flex-1 overflow-auto py-1">
-          {nodes.length > 0 && (
-            <TreeSection
-              title="Service Nodes"
-              icon={<IconBraces size={14} />}
-              color={P.cyan}
-              badge={`${nodes.length}`}
-              defaultOpen
-            >
-              {nodes.map((n) => (
-                <NodeRow
-                  key={n.id}
-                  id={n.id}
-                  label={n.label}
-                  isTarget={n.id === targetId}
-                />
-              ))}
-            </TreeSection>
-          )}
-
-          {edges.length > 0 && (
-            <TreeSection
-              title="CALLS Edges"
-              icon={<IconArrowRight size={14} />}
-              color={P.purple}
-              badge={`${edges.length}`}
-              defaultOpen
-            >
-              {edges.map((e, i) => (
-                <EdgeRow
-                  key={i}
-                  source={e.source}
-                  target={e.target}
-                  label={e.label}
-                />
-              ))}
-            </TreeSection>
-          )}
-
-          {formulaIr && (
-            <TreeSection
-              title="Formula IR"
-              icon={<IconFunction size={14} />}
-              color={P.blue}
-              defaultOpen
-            >
-              <Leaf label="method" value={formulaIr.method_name} color={P.cyan} />
-              <Leaf label="formula" value={formulaIr.formula} color={P.green} />
-              {(formulaIr.formula_terms ?? []).map((t: any, i: number) => (
-                <Leaf
-                  key={i}
-                  label={`  term[${i}]`}
-                  value={`${t.name} ← ${t.source_method}`}
-                  color={P.purple}
-                />
-              ))}
-            </TreeSection>
-          )}
-
-          {testCases && (
-            <TreeSection
-              title="Test Cases"
-              icon={<IconBraces size={14} />}
-              color={P.yellow}
-              badge={`${testCases.length}`}
-            >
-              {testCases.map((tc: any, i: number) => (
-                <Leaf
-                  key={i}
-                  label={tc.name}
-                  value={`expected: ${JSON.stringify(tc.expected_output)}`}
-                  color={P.yellow}
-                />
-              ))}
-            </TreeSection>
-          )}
-
-          {parityReport && (
-            <TreeSection
-              title="Validation Report"
-              icon={
-                parityReport.overall_passed ? (
-                  <IconCircleCheck size={14} />
-                ) : (
-                  <IconAlertTriangle size={14} />
-                )
-              }
-              color={parityReport.overall_passed ? P.green : P.red}
-              badge={`${parityReport.tiers_passed}/${parityReport.tiers_total}`}
-              defaultOpen
-            >
-              {parityReport.tiers.map((t, i) => (
-                <Leaf
-                  key={i}
-                  label={t.tier}
-                  value={t.passed ? "PASS" : "FAIL"}
-                  color={t.passed ? P.green : P.red}
-                />
-              ))}
-            </TreeSection>
-          )}
-
-          {nodes.length === 0 && !discoveryData && (
-            <div
-              className="px-4 py-8 text-center text-[12px]"
-              style={{ color: P.dim }}
-            >
-              Run a migration to populate the AST tree.
-            </div>
-          )}
+        {/* Resolved Nodes Section */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-5 py-4 shrink-0 flex items-center justify-between" style={{ borderBottom: `1px solid ${T.border}` }}>
+            <span className="text-[10px] font-bold tracking-widest" style={{ color: T.dim }}>RESOLVED NODES</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: T.surface2, color: T.text }}>
+              {nodes.length}
+            </span>
+          </div>
+          
+          <div className="flex-1 overflow-auto p-3 space-y-1">
+            {nodes.length > 0 ? (
+              nodes.map((n: { id: string }) => (
+                <div 
+                  key={n.id} 
+                  className="flex items-center gap-3 px-3 py-2 rounded-md cursor-default hover:bg-white/5 transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={n.id === targetId ? T.accent : T.dim} strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 8v8M8 12h8" />
+                  </svg>
+                  <span className="text-[12px] font-mono truncate" style={{ color: n.id === targetId ? T.text : T.dim }}>
+                    {n.id}()
+                  </span>
+                </div>
+              ))
+            ) : (
+              <div className="px-3 py-4 text-[12px] italic text-center" style={{ color: T.muted }}>
+                Awaiting AST parse...
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ── Right: Detail Panel ── */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* header */}
-        <div
-          className="px-4 py-2 text-[11px] font-semibold uppercase tracking-widest shrink-0 flex items-center gap-2"
-          style={{ color: P.dim, borderBottom: `1px solid ${P.border}` }}
-        >
-          <IconBraces size={13} style={{ color: P.blue }} />
-          Generated Python
+      {/* ── RIGHT MAIN AREA ── */}
+      <div className="flex-1 flex flex-col min-w-0">
+        
+        {/* Editor Header */}
+        <div className="h-[48px] shrink-0 flex items-center px-5 gap-3" style={{ borderBottom: `1px solid ${T.border}`, background: T.surface2 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.dim} strokeWidth="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+          <span className="text-[13px] font-medium" style={{ color: T.text }}>ShoppingCart.java</span>
+          <span className="ml-auto text-[11px] font-mono px-2 py-1 rounded" style={{ background: T.bg, color: T.dim, border: `1px solid ${T.border}` }}>
+            {targetId}()
+          </span>
         </div>
 
-        {/* code view */}
-        <div className="flex-1 overflow-auto px-4 py-3">
-          {architectureData ? (
-            <pre
-              className="text-[12px] leading-[1.7] whitespace-pre-wrap"
-              style={{ color: P.green }}
-            >
-              {(architectureData as any).generated_python ??
-                (architectureData as any).pure_function_source ??
-                "No source available."}
-            </pre>
-          ) : (
-            <div
-              className="flex items-center justify-center h-full text-[12px]"
-              style={{ color: P.dim }}
-            >
-              Generated code will appear after the Architecture agent runs.
-            </div>
-          )}
+        {/* Source Code Container */}
+        <div className="flex-1 overflow-auto p-6 bg-[#000000]">
+          <HighlightedJavaCode targetId={targetId} extractedNodes={extractedNodeIds} />
         </div>
+
+        {/* Bottom Formula IR Pane (Only visible when derived) */}
+        {formulaIr && (
+          <div className="shrink-0 p-5 shadow-2xl" style={{ borderTop: `1px solid ${T.border}`, background: T.surface }}>
+            <div className="flex items-center gap-2 mb-3">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.accent} strokeWidth="2">
+                <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+              </svg>
+              <span className="text-[11px] font-bold tracking-widest" style={{ color: T.accent }}>
+                EXTRACTED FORMULA (IR)
+              </span>
+            </div>
+            
+            <div className="font-mono text-[13px] bg-[#000000] border rounded-lg p-4" style={{ borderColor: T.border }}>
+              <div className="flex items-center gap-3">
+                <span style={{ color: T.dim }}>Target:</span>
+                <span style={{ color: T.text }} className="font-semibold">{formulaIr.method_name}</span>
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                <span style={{ color: T.dim }}>Logic:</span>
+                <span style={{ color: T.text }} className="font-semibold">{formulaIr.formula}</span>
+              </div>
+              
+              <div className="mt-4 pt-3 flex gap-6 overflow-x-auto" style={{ borderTop: `1px dashed ${T.border}` }}>
+                {(formulaIr.formula_terms ?? []).map((t: { name: string; source_method: string }, i: number) => (
+                  <div key={i} className="flex items-center gap-2 shrink-0 bg-white/5 px-2 py-1 rounded">
+                    <span style={{ color: T.text }}>{t.name}</span>
+                    <span style={{ color: T.muted }}>→</span>
+                    <span style={{ color: T.dim }}>{t.source_method}()</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
