@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useRef, useEffect, useState } from "react";
+import { LiquidGlassCard } from "@/components/ui/liquid-glass";
 import type {
   WindowInstance,
   WindowManagerActions,
@@ -28,6 +29,13 @@ export function RosettaWindow({
   const dragStart = useRef({ x: 0, y: 0, winX: 0, winY: 0 });
   const resizeStart = useRef({ x: 0, y: 0, w: 0, h: 0, winX: 0, winY: 0 });
   const [isDraggingVisual, setIsDraggingVisual] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Trigger enter animation on mount
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
 
   const isActive =
     win.zIndex >= (actions.getTopZIndex?.() ?? 0) - 1; // approximate "top"
@@ -69,24 +77,13 @@ export function RosettaWindow({
       const onMove = (ev: PointerEvent) => {
         if (!isDragging.current) return;
         ev.preventDefault();
-
         const dx = ev.clientX - dragStart.current.x;
         const dy = ev.clientY - dragStart.current.y;
-
-        let newX = dragStart.current.winX + dx;
-        let newY = dragStart.current.winY + dy;
-
-        // Constrain to desktop bounds
-        const desktop = desktopRef.current;
-        if (desktop) {
-          const rect = desktop.getBoundingClientRect();
-          const maxX = rect.width - MIN_VISIBLE;
-          const maxY = rect.height - MIN_VISIBLE;
-          newX = Math.max(-win.dimensions.width + MIN_VISIBLE, Math.min(newX, maxX));
-          newY = Math.max(0, Math.min(newY, maxY));
-        }
-
-        actions.updatePosition(win.id, { x: newX, y: newY });
+        // Free movement across infinite canvas — no clamping
+        actions.updatePosition(win.id, {
+          x: dragStart.current.winX + dx,
+          y: dragStart.current.winY + dy,
+        });
       };
 
       const onUp = () => {
@@ -195,12 +192,18 @@ export function RosettaWindow({
       ref={windowRef}
       style={{
         ...style,
-        transform: isDraggingVisual ? "scale(1.018)" : "scale(1)",
+        transform: isDraggingVisual
+          ? "scale(1.018)"
+          : mounted
+          ? "scale(1) translateY(0px)"
+          : "scale(0.92) translateY(8px)",
+        opacity: mounted ? 1 : 0,
         transition: isDraggingVisual
           ? "box-shadow 0.15s ease"
-          : "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease, opacity 0.2s ease",
-        willChange: isDraggingVisual ? "transform" : "auto",
+          : "transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease, box-shadow 0.25s ease",
+        willChange: "transform, opacity",
       }}
+      data-window
       onPointerDown={onWindowPointerDown}
       className={`flex flex-col overflow-hidden ${
         isMaximized ? "rounded-none" : "rounded-xl"
@@ -212,19 +215,57 @@ export function RosettaWindow({
             : "shadow-lg shadow-black/40 opacity-95"
       }`}
     >
+      {/* ── Liquid Glass layers (pointer-events-none overlays on the chrome) ── */}
+      {!isMaximized && (
+        <>
+          {/* Bend layer — frosted backdrop distortion */}
+          <div
+            className="absolute inset-0 backdrop-blur-xl z-0 pointer-events-none"
+            style={{
+              borderRadius: 12,
+              filter: 'url(#glass-blur)',
+            }}
+          />
+          {/* Face layer — subtle outer diffuse */}
+          <div
+            className="absolute inset-0 z-10 pointer-events-none"
+            style={{
+              borderRadius: 12,
+              boxShadow: '0 4px 4px rgba(0,0,0,0.15), 0 0 24px rgba(255,255,255,0.07)',
+            }}
+          />
+          {/* Edge layer — thin inner bevel highlight */}
+          <div
+            className="absolute inset-0 z-20 pointer-events-none"
+            style={{
+              borderRadius: 12,
+              boxShadow: 'inset 2px 2px 2px 0 rgba(255,255,255,0.12), inset -2px -2px 2px 0 rgba(255,255,255,0.06)',
+            }}
+          />
+        </>
+      )}
       {/* ── Title Bar ── */}
-      <div
-        onPointerDown={onDragStart}
-        onDoubleClick={onTitleDoubleClick}
-        className={`flex items-center h-9 px-3 shrink-0 ${
-          isMaximized ? "" : "cursor-grab active:cursor-grabbing"
-        } ${
-          isActive
-            ? "bg-neutral-900/95 border-b border-white/[0.08]"
-            : "bg-neutral-900/80 border-b border-white/[0.05]"
-        }`}
-        style={{ touchAction: "none", userSelect: "none" }}
+      <LiquidGlassCard
+        draggable={false}
+        expandable={false}
+        blurIntensity="xl"
+        glowIntensity="xs"
+        shadowIntensity="xs"
+        borderRadius="0px"
+        className="shrink-0"
+        style={{
+          background: isActive ? 'rgba(18,18,18,0.85)' : 'rgba(10,10,10,0.75)',
+          borderBottom: isActive ? '1px solid rgba(255,255,255,0.09)' : '1px solid rgba(255,255,255,0.05)',
+        }}
       >
+        <div
+          onPointerDown={onDragStart}
+          onDoubleClick={onTitleDoubleClick}
+          className={`relative z-30 flex items-center h-9 px-3 ${
+            isMaximized ? "" : "cursor-grab active:cursor-grabbing"
+          }`}
+          style={{ touchAction: "none", userSelect: "none" }}
+        >
         {/* Traffic lights */}
         <div
           className="flex items-center gap-[7px] mr-3"
@@ -238,9 +279,7 @@ export function RosettaWindow({
               actions.closeWindow(win.id);
             }}
             className={`w-[13px] h-[13px] rounded-full transition-colors duration-150 flex items-center justify-center ${
-              controlsHovered
-                ? "bg-red-500 hover:bg-red-400"
-                : "bg-zinc-600/80"
+              isActive ? "bg-[#ff5f56]" : "bg-[#ff5f56]/60"
             }`}
             title="Close"
           >
@@ -263,9 +302,7 @@ export function RosettaWindow({
               actions.minimizeWindow(win.id);
             }}
             className={`w-[13px] h-[13px] rounded-full transition-colors duration-150 flex items-center justify-center ${
-              controlsHovered
-                ? "bg-yellow-500 hover:bg-yellow-400"
-                : "bg-zinc-600/80"
+              isActive ? "bg-[#ffbd2e]" : "bg-[#ffbd2e]/60"
             }`}
             title="Minimize"
           >
@@ -288,9 +325,7 @@ export function RosettaWindow({
               actions.maximizeWindow(win.id);
             }}
             className={`w-[13px] h-[13px] rounded-full transition-colors duration-150 flex items-center justify-center ${
-              controlsHovered
-                ? "bg-green-500 hover:bg-green-400"
-                : "bg-zinc-600/80"
+              isActive ? "bg-[#27c93f]" : "bg-[#27c93f]/60"
             }`}
             title={isMaximized ? "Restore" : "Maximize"}
           >
@@ -343,6 +378,7 @@ export function RosettaWindow({
           {win.title}
         </span>
       </div>
+      </LiquidGlassCard>
 
       {/* ── Content Area ── */}
       <div

@@ -5,12 +5,14 @@ import {
   IconTerminal2,
   IconBraces,
   IconTopologyStar3,
+  IconScaleOutline,
 } from "@tabler/icons-react";
 import type { WindowDefinition } from "@/components/windows/types";
 
 import { CliApp } from "./CliApp";
 import { AstApp } from "./AstApp";
 import { GraphApp } from "./GraphApp";
+import { ParityHarness } from "./ParityHarness";
 
 // ── Application definition ──
 export interface RosettaApp {
@@ -39,13 +41,13 @@ export function appToWindowDef(app: RosettaApp): WindowDefinition {
 export const appRegistry: RosettaApp[] = [
   {
     id: "cli",
-    title: "Rosetta CLI",
+    title: "Recast CLI",
     icon: (
       <IconTerminal2 className="h-full w-full text-zinc-300 hover:text-white transition-colors" />
     ),
-    defaultWidth: 720,
-    defaultHeight: 460,
-    defaultPosition: { x: 80, y: 40 },
+    defaultWidth: 580,
+    defaultHeight: 380,
+    defaultPosition: { x: 60, y: 50 },
     content: <CliApp />,
   },
   {
@@ -54,9 +56,9 @@ export const appRegistry: RosettaApp[] = [
     icon: (
       <IconBraces className="h-full w-full text-zinc-300 hover:text-white transition-colors" />
     ),
-    defaultWidth: 760,
-    defaultHeight: 500,
-    defaultPosition: { x: 160, y: 60 },
+    defaultWidth: 620,
+    defaultHeight: 420,
+    defaultPosition: { x: 140, y: 70 },
     content: <AstApp />,
   },
   {
@@ -65,10 +67,21 @@ export const appRegistry: RosettaApp[] = [
     icon: (
       <IconTopologyStar3 className="h-full w-full text-zinc-300 hover:text-white transition-colors" />
     ),
-    defaultWidth: 800,
-    defaultHeight: 520,
-    defaultPosition: { x: 240, y: 80 },
+    defaultWidth: 660,
+    defaultHeight: 440,
+    defaultPosition: { x: 220, y: 90 },
     content: <GraphApp />,
+  },
+  {
+    id: "parity",
+    title: "Parity Harness",
+    icon: (
+      <IconScaleOutline className="h-full w-full text-zinc-300 hover:text-white transition-colors" />
+    ),
+    defaultWidth: 800,
+    defaultHeight: 500,
+    defaultPosition: { x: 300, y: 60 },
+    content: <ParityHarness />,
   },
 ];
 

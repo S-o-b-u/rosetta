@@ -18,12 +18,14 @@ const ForceGraph3D = dynamic(() => import("react-force-graph-3d"), {
 
 /* ── Palette ── */
 const P = {
-  bg: "#070b14",
-  nodePrimary: "#58a6ff",
+  bg: "#0d1117", 
+  panel: "#161b22",
+  border: "#30363d",
+  nodePrimary: "#58a6ff", 
   nodeSecondary: "#56d4dd",
   edgeLine: "#1e3a5f",
-  labelText: "#e6edf3",
-  dim: "#3b4252",
+  labelText: "#f0f6fc",
+  dim: "#8b949e",
   purple: "#bc8cff",
 };
 
@@ -190,7 +192,12 @@ export function GraphApp() {
   useEffect(() => {
     if (fgRef.current && graphData.nodes.length > 0) {
       const t = setTimeout(() => {
-        fgRef.current?.zoomToFit?.(600, 60);
+        // Zoom tighter on first glance
+        fgRef.current?.zoomToFit?.(600, 20);
+        const dist = fgRef.current.cameraPosition().z;
+        if (dist > 150) {
+          fgRef.current.cameraPosition({ z: 120 }, null, 600);
+        }
       }, 500);
       return () => clearTimeout(t);
     }
@@ -200,8 +207,8 @@ export function GraphApp() {
   if (!neo4jContext || graphData.nodes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full font-mono gap-4" style={{ background: P.bg }}>
-        <div className="w-16 h-16 rounded-2xl border border-white/5 flex items-center justify-center bg-white/[0.02]">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b4252" strokeWidth="1.5">
+        <div className="w-16 h-16 rounded border flex items-center justify-center" style={{ borderColor: P.border, background: P.panel }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={P.dim} strokeWidth="1.5">
             <circle cx="12" cy="5" r="2" />
             <circle cx="5" cy="19" r="2" />
             <circle cx="19" cy="19" r="2" />
@@ -209,8 +216,8 @@ export function GraphApp() {
             <line x1="12" y1="7" x2="19" y2="17" />
           </svg>
         </div>
-        <div className="text-[13px] font-medium" style={{ color: "#4b5563" }}>Knowledge Graph</div>
-        <div className="text-[11px]" style={{ color: "#374151" }}>Run a migration to visualize dependencies</div>
+        <div className="text-[12px] font-medium" style={{ color: P.labelText }}>Knowledge Graph</div>
+        <div className="text-[11px]" style={{ color: P.dim }}>Run a migration to visualize dependencies</div>
       </div>
     );
   }
@@ -251,19 +258,24 @@ export function GraphApp() {
       />
 
       {/* HUD top-left */}
-      <div className="absolute top-3 left-3 z-10 pointer-events-none">
-        <div className="text-[13px] font-semibold font-mono" style={{ color: P.labelText }}>
-          Knowledge Graph
+      <div className="absolute top-0 left-0 right-0 p-3 flex justify-between pointer-events-none">
+        <div>
+          <div className="text-[11px] font-semibold font-mono" style={{ color: P.labelText }}>
+            Knowledge Graph
+          </div>
+          <div className="text-[10px] font-mono mt-0.5" style={{ color: P.dim }}>
+            {graphData.nodes.length} nodes · {graphData.links.length} edges
+          </div>
         </div>
-        <div className="text-[10px] font-mono mt-0.5" style={{ color: P.dim }}>
-          {graphData.nodes.length} nodes · {graphData.links.length} edges
+        <div className="text-[9px] font-mono text-right" style={{ color: P.dim }}>
+          left drag: rotate · scroll: zoom · right drag: pan
         </div>
       </div>
 
       {/* Legend */}
       <div
-        className="absolute bottom-3 left-3 flex flex-col gap-1 px-3 py-2 rounded-xl z-10 pointer-events-none"
-        style={{ background: "rgba(7,11,20,0.85)", border: "1px solid rgba(255,255,255,0.05)" }}
+        className="absolute bottom-3 left-3 flex flex-col gap-1.5 px-3 py-2 pointer-events-none"
+        style={{ background: P.panel, border: `1px solid ${P.border}` }}
       >
         <LegendDot color={P.nodePrimary} label="Target method" />
         <LegendDot color={P.nodeSecondary} label="Dependency" />
@@ -272,8 +284,8 @@ export function GraphApp() {
       {/* Hover info */}
       {hovered && (
         <div
-          className="absolute top-3 right-3 px-3 py-2 rounded-xl font-mono text-[12px] z-10 pointer-events-none"
-          style={{ background: "rgba(7,11,20,0.92)", border: `1px solid ${P.nodePrimary}30` }}
+          className="absolute bottom-3 right-3 px-3 py-2 font-mono text-[11px] pointer-events-none text-right"
+          style={{ background: P.panel, border: `1px solid ${P.border}` }}
         >
           <div style={{ color: P.nodePrimary }} className="font-semibold">{hovered}</div>
           <div className="text-[10px] mt-0.5" style={{ color: P.dim }}>
